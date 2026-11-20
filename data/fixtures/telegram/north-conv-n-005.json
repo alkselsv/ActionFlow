@@ -1,0 +1,90 @@
+﻿{
+    "name":  "Synthetic north conv-n-005",
+    "type":  "private_group",
+    "id":  100005,
+    "messages":  [
+                     {
+                         "id":  1,
+                         "type":  "message",
+                         "date":  "2026-09-15T08:00:00",
+                         "date_unixtime":  "1789459200",
+                         "from":  "Synthetic Customer Irina",
+                         "from_id":  "user9001",
+                         "text":  "Пришлите, пожалуйста, УПД за август с подписью.",
+                         "_actionflow_synthetic_source":  {
+                                                              "external_id":  "n-005-001",
+                                                              "revision":  1,
+                                                              "sender_role":  "customer",
+                                                              "sent_at":  "2026-09-15T11:00:00+03:00",
+                                                              "observed_at":  "2026-09-15T11:01:00+03:00",
+                                                              "reply_to_external_id":  null,
+                                                              "source":  "import"
+                                                          }
+                     },
+                     {
+                         "id":  2,
+                         "type":  "message",
+                         "date":  "2026-09-15T08:01:00",
+                         "date_unixtime":  "1789459260",
+                         "from":  "Synthetic System Event",
+                         "from_id":  "user9999",
+                         "text":  "Запрос зарегистрирован.",
+                         "reply_to_message_id":  1,
+                         "_actionflow_synthetic_source":  {
+                                                              "external_id":  "n-005-002",
+                                                              "revision":  1,
+                                                              "sender_role":  "system",
+                                                              "sent_at":  "2026-09-15T11:01:00+03:00",
+                                                              "observed_at":  "2026-09-15T11:01:01+03:00",
+                                                              "reply_to_external_id":  "n-005-001",
+                                                              "source":  "import"
+                                                          }
+                     },
+                     {
+                         "id":  3,
+                         "type":  "message",
+                         "date":  "2026-09-15T09:10:00",
+                         "date_unixtime":  "1789463400",
+                         "from":  "Synthetic Customer Irina",
+                         "from_id":  "user9001",
+                         "text":  "Документ нужен сегодня для бухгалтерии.",
+                         "reply_to_message_id":  1,
+                         "_actionflow_synthetic_source":  {
+                                                              "external_id":  "n-005-003",
+                                                              "revision":  1,
+                                                              "sender_role":  "customer",
+                                                              "sent_at":  "2026-09-15T12:10:00+03:00",
+                                                              "observed_at":  "2026-09-15T12:11:00+03:00",
+                                                              "reply_to_external_id":  "n-005-001",
+                                                              "source":  "import"
+                                                          }
+                     },
+                     {
+                         "id":  4,
+                         "type":  "message",
+                         "date":  "2026-09-15T09:20:00",
+                         "date_unixtime":  "1789464000",
+                         "from":  "Synthetic Vedita Employee Maria",
+                         "from_id":  "user9102",
+                         "text":  "Запросила УПД у бухгалтерии.",
+                         "reply_to_message_id":  1,
+                         "_actionflow_synthetic_source":  {
+                                                              "external_id":  "n-005-004",
+                                                              "revision":  1,
+                                                              "sender_role":  "employee",
+                                                              "sent_at":  "2026-09-15T12:20:00+03:00",
+                                                              "observed_at":  "2026-09-15T12:21:00+03:00",
+                                                              "reply_to_external_id":  "n-005-001",
+                                                              "source":  "import"
+                                                          }
+                     }
+                 ],
+    "_actionflow_fixture":  {
+                                "synthetic":  true,
+                                "workspace_id":  "north",
+                                "conversation_id":  "conv-n-005",
+                                "source_record_count":  4,
+                                "source_export_format":  "normalized JSONL supplied by user",
+                                "not_a_real_telegram_export":  true
+                            }
+}

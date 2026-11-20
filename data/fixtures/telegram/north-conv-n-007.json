@@ -1,0 +1,89 @@
+﻿{
+    "name":  "Synthetic north conv-n-007",
+    "type":  "private_group",
+    "id":  100007,
+    "messages":  [
+                     {
+                         "id":  1,
+                         "type":  "message",
+                         "date":  "2026-09-15T05:55:00",
+                         "date_unixtime":  "1789451700",
+                         "from":  "Synthetic Customer Irina",
+                         "from_id":  "user9001",
+                         "text":  "Интеграция снова не передаёт заказы.",
+                         "_actionflow_synthetic_source":  {
+                                                              "external_id":  "n-007-001",
+                                                              "revision":  1,
+                                                              "sender_role":  "customer",
+                                                              "sent_at":  "2026-09-15T08:55:00+03:00",
+                                                              "observed_at":  "2026-09-15T08:56:00+03:00",
+                                                              "reply_to_external_id":  null,
+                                                              "source":  "import"
+                                                          }
+                     },
+                     {
+                         "id":  2,
+                         "type":  "message",
+                         "date":  "2026-09-15T06:05:00",
+                         "date_unixtime":  "1789452300",
+                         "from":  "Synthetic Vedita Employee Alexey",
+                         "from_id":  "user9101",
+                         "text":  "Проверяем журналы, вернусь с результатом.",
+                         "reply_to_message_id":  1,
+                         "_actionflow_synthetic_source":  {
+                                                              "external_id":  "n-007-002",
+                                                              "revision":  1,
+                                                              "sender_role":  "employee",
+                                                              "sent_at":  "2026-09-15T09:05:00+03:00",
+                                                              "observed_at":  "2026-09-15T09:06:00+03:00",
+                                                              "reply_to_external_id":  "n-007-001",
+                                                              "source":  "import"
+                                                          }
+                     },
+                     {
+                         "id":  3,
+                         "type":  "message",
+                         "date":  "2026-09-15T08:30:00",
+                         "date_unixtime":  "1789461000",
+                         "from":  "Synthetic Customer Irina",
+                         "from_id":  "user9001",
+                         "text":  "Если сегодня не восстановите обмен, мы остановим работы и потребуем пересмотреть договор.",
+                         "reply_to_message_id":  2,
+                         "_actionflow_synthetic_source":  {
+                                                              "external_id":  "n-007-003",
+                                                              "revision":  1,
+                                                              "sender_role":  "customer",
+                                                              "sent_at":  "2026-09-15T11:30:00+03:00",
+                                                              "observed_at":  "2026-09-15T11:31:00+03:00",
+                                                              "reply_to_external_id":  "n-007-002",
+                                                              "source":  "import"
+                                                          }
+                     },
+                     {
+                         "id":  4,
+                         "type":  "message",
+                         "date":  "2026-09-15T08:31:00",
+                         "date_unixtime":  "1789461060",
+                         "from":  "Synthetic System Event",
+                         "from_id":  "user9999",
+                         "text":  "Сообщение доставлено.",
+                         "_actionflow_synthetic_source":  {
+                                                              "external_id":  "n-007-004",
+                                                              "revision":  1,
+                                                              "sender_role":  "system",
+                                                              "sent_at":  "2026-09-15T11:31:00+03:00",
+                                                              "observed_at":  "2026-09-15T11:31:01+03:00",
+                                                              "reply_to_external_id":  null,
+                                                              "source":  "import"
+                                                          }
+                     }
+                 ],
+    "_actionflow_fixture":  {
+                                "synthetic":  true,
+                                "workspace_id":  "north",
+                                "conversation_id":  "conv-n-007",
+                                "source_record_count":  4,
+                                "source_export_format":  "normalized JSONL supplied by user",
+                                "not_a_real_telegram_export":  true
+                            }
+}

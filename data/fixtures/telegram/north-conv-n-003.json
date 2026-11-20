@@ -1,0 +1,71 @@
+﻿{
+    "name":  "Synthetic north conv-n-003",
+    "type":  "private_group",
+    "id":  100003,
+    "messages":  [
+                     {
+                         "id":  1,
+                         "type":  "message",
+                         "date":  "2026-09-15T10:00:00",
+                         "date_unixtime":  "1789466400",
+                         "from":  "Synthetic Customer Anna",
+                         "from_id":  "user9003",
+                         "text":  "Нужна обновлённая выгрузка по продажам.",
+                         "_actionflow_synthetic_source":  {
+                                                              "external_id":  "n-003-001",
+                                                              "revision":  1,
+                                                              "sender_role":  "customer",
+                                                              "sent_at":  "2026-09-15T13:00:00+03:00",
+                                                              "observed_at":  "2026-09-15T13:01:00+03:00",
+                                                              "reply_to_external_id":  null,
+                                                              "source":  "import"
+                                                          }
+                     },
+                     {
+                         "id":  2,
+                         "type":  "message",
+                         "date":  "2026-09-15T10:05:00",
+                         "date_unixtime":  "1789466700",
+                         "from":  "Synthetic Vedita Employee Alexey",
+                         "from_id":  "user9101",
+                         "text":  "Подготовлю выгрузку сегодня до 17:30.",
+                         "reply_to_message_id":  1,
+                         "_actionflow_synthetic_source":  {
+                                                              "external_id":  "n-003-002",
+                                                              "revision":  1,
+                                                              "sender_role":  "employee",
+                                                              "sent_at":  "2026-09-15T13:05:00+03:00",
+                                                              "observed_at":  "2026-09-15T13:06:00+03:00",
+                                                              "reply_to_external_id":  "n-003-001",
+                                                              "source":  "import"
+                                                          }
+                     },
+                     {
+                         "id":  3,
+                         "type":  "message",
+                         "date":  "2026-09-15T10:08:00",
+                         "date_unixtime":  "1789466880",
+                         "from":  "Synthetic Customer Anna",
+                         "from_id":  "user9003",
+                         "text":  "Благодарю.",
+                         "reply_to_message_id":  2,
+                         "_actionflow_synthetic_source":  {
+                                                              "external_id":  "n-003-003",
+                                                              "revision":  1,
+                                                              "sender_role":  "customer",
+                                                              "sent_at":  "2026-09-15T13:08:00+03:00",
+                                                              "observed_at":  "2026-09-15T13:09:00+03:00",
+                                                              "reply_to_external_id":  "n-003-002",
+                                                              "source":  "import"
+                                                          }
+                     }
+                 ],
+    "_actionflow_fixture":  {
+                                "synthetic":  true,
+                                "workspace_id":  "north",
+                                "conversation_id":  "conv-n-003",
+                                "source_record_count":  3,
+                                "source_export_format":  "normalized JSONL supplied by user",
+                                "not_a_real_telegram_export":  true
+                            }
+}
