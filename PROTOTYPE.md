@@ -102,7 +102,7 @@ Telegram JSON export
 
 Рабочий стек самостоятельного приложения:
 
-- Python; конкретная версия выбирается при проверке совместимости зависимостей;
+- Python 3.14.10;
 - FastAPI;
 - Pydantic;
 - SQLAlchemy и Alembic;
@@ -113,6 +113,8 @@ Telegram JSON export
 - React + TypeScript + Vite для очереди менеджера;
 - Docker Compose для локального запуска;
 - pytest для детекторов, контрактов и replay-тестов.
+
+Версии зафиксированы 2026-11-21 в [af-004-stack.md](docs/experiment/af-004-stack.md): FastAPI 0.165.0, Pydantic 2.14.4, SQLAlchemy 2.1.9 (синхронный доступ), Alembic 1.20.1, PostgreSQL 16.16, Temporal Server 1.32.2 и Python SDK 1.36.1, Node.js 26.13.1 LTS, React 19.3.1, TypeScript 7.0.2, Vite 8.3.8. Совместимость проверена минимальными запусками; приложение ещё не реализовано.
 
 Temporal заменяет предложенные ранее APScheduler и Celery для этих процессов. Redis для расписаний и очереди Temporal не требуется. Прикладная БД и хранилища Temporal разделяются; для пилота возможен один экземпляр PostgreSQL с отдельными базами и пользователями.
 
