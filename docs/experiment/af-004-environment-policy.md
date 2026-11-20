@@ -1,6 +1,6 @@
 # AF-004: условия работы с данными и контур эксперимента
 
-Дата: 2026-11-20. Статус: утверждено владельцем проекта при закрытии [issue #2](https://github.com/alkselsv/ActionFlow/issues/2). Связанные документы: [AF-001: исходные данные](af-001-source-data.md), [спецификация](../specs/responseflow-mvp.md), [дорожная карта](../ROADMAP.md).
+Дата: 2026-11-20. Статус: утверждено владельцем проекта при закрытии [issue #2](https://github.com/alkselsv/ActionFlow/issues/2). Связанные документы: [AF-001: исходные данные](af-001-source-data.md), [спецификация](../specs/responseflow-mvp.md), [дорожная карта](../ROADMAP.md). Версии и проверка совместимости: [af-004-stack.md](af-004-stack.md).
 
 ## Решение
 
