@@ -1,0 +1,110 @@
+{
+    "name": "Synthetic edge service",
+    "type": "private_group",
+    "id": 200004,
+    "messages": [
+        {
+            "id": 1,
+            "type": "service",
+            "date": "2026-09-16T10:00:00",
+            "date_unixtime": "1789552800",
+            "actor": "Synthetic Customer Olga",
+            "actor_id": "user9004",
+            "action": "join_group",
+            "_actionflow_synthetic_source": {
+                "external_id": "edge-service-001",
+                "revision": 1,
+                "sender_role": "system",
+                "sent_at": "2026-09-16T13:00:00+03:00",
+                "observed_at": "2026-09-16T13:01:00+03:00",
+                "reply_to_external_id": null,
+                "source": "import"
+            }
+        },
+        {
+            "id": 2,
+            "type": "service",
+            "date": "2026-09-16T10:05:00",
+            "date_unixtime": "1789553100",
+            "actor": "Synthetic Vedita Employee Maria",
+            "actor_id": "user9102",
+            "action": "invite_members",
+            "members": [
+                "Synthetic Customer Olga"
+            ],
+            "_actionflow_synthetic_source": {
+                "external_id": "edge-service-002",
+                "revision": 1,
+                "sender_role": "system",
+                "sent_at": "2026-09-16T13:05:00+03:00",
+                "observed_at": "2026-09-16T13:06:00+03:00",
+                "reply_to_external_id": null,
+                "source": "import"
+            }
+        },
+        {
+            "id": 3,
+            "type": "message",
+            "date": "2026-09-16T10:10:00",
+            "date_unixtime": "1789553400",
+            "from": "Synthetic Customer Olga",
+            "from_id": "user9004",
+            "text": "Спасибо, что добавили.",
+            "_actionflow_synthetic_source": {
+                "external_id": "edge-service-003",
+                "revision": 1,
+                "sender_role": "customer",
+                "sent_at": "2026-09-16T13:10:00+03:00",
+                "observed_at": "2026-09-16T13:11:00+03:00",
+                "reply_to_external_id": null,
+                "source": "import"
+            }
+        },
+        {
+            "id": 4,
+            "type": "service",
+            "date": "2026-09-16T10:15:00",
+            "date_unixtime": "1789553700",
+            "actor": "Synthetic System Event",
+            "actor_id": "user9999",
+            "action": "change_title",
+            "title": "Synthetic edge service — renamed",
+            "_actionflow_synthetic_source": {
+                "external_id": "edge-service-004",
+                "revision": 1,
+                "sender_role": "system",
+                "sent_at": "2026-09-16T13:15:00+03:00",
+                "observed_at": "2026-09-16T13:16:00+03:00",
+                "reply_to_external_id": null,
+                "source": "import"
+            }
+        },
+        {
+            "id": 5,
+            "type": "service",
+            "date": "2026-09-16T10:20:00",
+            "date_unixtime": "1789554000",
+            "actor": "Synthetic Customer Olga",
+            "actor_id": "user9004",
+            "action": "leave_group",
+            "_actionflow_synthetic_source": {
+                "external_id": "edge-service-005",
+                "revision": 1,
+                "sender_role": "system",
+                "sent_at": "2026-09-16T13:20:00+03:00",
+                "observed_at": "2026-09-16T13:21:00+03:00",
+                "reply_to_external_id": null,
+                "source": "import"
+            }
+        }
+    ],
+    "_actionflow_fixture": {
+        "synthetic": true,
+        "workspace_id": "edge",
+        "conversation_id": "service",
+        "source_record_count": 5,
+        "source_export_format": "synthetic fixture",
+        "not_a_real_telegram_export": true,
+        "import_sequence": 1
+    }
+}
