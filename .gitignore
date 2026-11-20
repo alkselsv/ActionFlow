@@ -1,0 +1,17 @@
+# Local experiment data.
+# Real Vedita correspondence, exports and other client material must stay outside Git.
+# Only the approved synthetic fixtures are tracked.
+/data/*
+!/data/fixtures/
+!/data/fixtures/**
+
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+
+# IDE and Python artifacts
+.idea/
+__pycache__/
+*.py[cod]
+.venv/
