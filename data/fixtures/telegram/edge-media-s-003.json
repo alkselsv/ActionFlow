@@ -1,0 +1,142 @@
+{
+    "name": "Synthetic edge media",
+    "type": "private_group",
+    "id": 200003,
+    "messages": [
+        {
+            "id": 1,
+            "type": "message",
+            "date": "2026-09-16T12:00:00",
+            "date_unixtime": "1789560000",
+            "from": "Synthetic Customer Irina",
+            "from_id": "user9001",
+            "photo": "photo_1@16-09-2026_12-00-00.jpg",
+            "media_type": "photo",
+            "width": 1280,
+            "height": 720,
+            "_actionflow_synthetic_source": {
+                "external_id": "edge-media-001",
+                "revision": 1,
+                "sender_role": "customer",
+                "sent_at": "2026-09-16T15:00:00+03:00",
+                "observed_at": "2026-09-16T15:01:00+03:00",
+                "reply_to_external_id": null,
+                "source": "import"
+            }
+        },
+        {
+            "id": 2,
+            "type": "message",
+            "date": "2026-09-16T12:05:00",
+            "date_unixtime": "1789560300",
+            "from": "Synthetic Vedita Employee Maria",
+            "from_id": "user9102",
+            "text": "Вижу ошибку на скриншоте.",
+            "reply_to_message_id": 1,
+            "_actionflow_synthetic_source": {
+                "external_id": "edge-media-002",
+                "revision": 1,
+                "sender_role": "employee",
+                "sent_at": "2026-09-16T15:05:00+03:00",
+                "observed_at": "2026-09-16T15:06:00+03:00",
+                "reply_to_external_id": "edge-media-001",
+                "source": "import"
+            }
+        },
+        {
+            "id": 3,
+            "type": "message",
+            "date": "2026-09-16T12:10:00",
+            "date_unixtime": "1789560600",
+            "from": "Synthetic Customer Olga",
+            "from_id": "user9004",
+            "voice_message": "voice_1@16-09-2026_12-10-00.ogg",
+            "media_type": "voice_message",
+            "mime_type": "audio/ogg",
+            "duration_seconds": 12,
+            "_actionflow_synthetic_source": {
+                "external_id": "edge-media-003",
+                "revision": 1,
+                "sender_role": "customer",
+                "sent_at": "2026-09-16T15:10:00+03:00",
+                "observed_at": "2026-09-16T15:11:00+03:00",
+                "reply_to_external_id": null,
+                "source": "import"
+            }
+        },
+        {
+            "id": 4,
+            "type": "message",
+            "date": "2026-09-16T12:15:00",
+            "date_unixtime": "1789560900",
+            "from": "Synthetic Vedita Employee Maria",
+            "from_id": "user9102",
+            "text": "Отчёт во вложении.",
+            "file": "report.pdf",
+            "media_type": "document",
+            "mime_type": "application/pdf",
+            "_actionflow_synthetic_source": {
+                "external_id": "edge-media-004",
+                "revision": 1,
+                "sender_role": "employee",
+                "sent_at": "2026-09-16T15:15:00+03:00",
+                "observed_at": "2026-09-16T15:16:00+03:00",
+                "reply_to_external_id": null,
+                "source": "import"
+            }
+        },
+        {
+            "id": 5,
+            "type": "message",
+            "date": "2026-09-16T12:20:00",
+            "date_unixtime": "1789561200",
+            "from": "Synthetic Customer Irina",
+            "from_id": "user9001",
+            "video_message": "video_1@16-09-2026_12-20-00.mp4",
+            "media_type": "video_message",
+            "mime_type": "video/mp4",
+            "duration_seconds": 8,
+            "_actionflow_synthetic_source": {
+                "external_id": "edge-media-005",
+                "revision": 1,
+                "sender_role": "customer",
+                "sent_at": "2026-09-16T15:20:00+03:00",
+                "observed_at": "2026-09-16T15:21:00+03:00",
+                "reply_to_external_id": null,
+                "source": "import"
+            }
+        },
+        {
+            "id": 6,
+            "type": "message",
+            "date": "2026-09-16T12:25:00",
+            "date_unixtime": "1789561500",
+            "from": "Synthetic Customer Olga",
+            "from_id": "user9004",
+            "text": "👍",
+            "sticker": {
+                "emoji": "👍",
+                "file": "sticker_1.webp"
+            },
+            "media_type": "sticker",
+            "_actionflow_synthetic_source": {
+                "external_id": "edge-media-006",
+                "revision": 1,
+                "sender_role": "customer",
+                "sent_at": "2026-09-16T15:25:00+03:00",
+                "observed_at": "2026-09-16T15:26:00+03:00",
+                "reply_to_external_id": null,
+                "source": "import"
+            }
+        }
+    ],
+    "_actionflow_fixture": {
+        "synthetic": true,
+        "workspace_id": "edge",
+        "conversation_id": "media",
+        "source_record_count": 6,
+        "source_export_format": "synthetic fixture",
+        "not_a_real_telegram_export": true,
+        "import_sequence": 1
+    }
+}
