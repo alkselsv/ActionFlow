@@ -1,5 +1,40 @@
 # ActionFlow
 
+## Локальный запуск ResponseFlow
+
+Первый сценарий M1 позволяет менеджеру войти, создать клиента и проект, назначить ответственного и снова открыть сохранённый проект.
+
+Понадобятся Docker Compose, uv с Python 3.14.10 и Node.js 26.13.1 с npm. Команды ниже для PowerShell и выполняются из корня репозитория. Подставьте свой локальный пароль PostgreSQL вместо `REPLACE_WITH_LOCAL_PASSWORD`.
+
+```powershell
+$env:ACTIONFLOW_DB_PASSWORD = 'REPLACE_WITH_LOCAL_PASSWORD'
+$dbPassword = [uri]::EscapeDataString($env:ACTIONFLOW_DB_PASSWORD)
+$env:ACTIONFLOW_DATABASE_URL = "postgresql+psycopg://actionflow:${dbPassword}@127.0.0.1:5432/actionflow"
+docker compose -f infra/compose.yml up -d --wait postgres
+uv sync --project backend --frozen
+uv run --project backend --frozen alembic -c backend/alembic.ini upgrade head
+$env:PYTHONPATH = 'backend/src'
+uv run --project backend --frozen python -m actionflow.setup_manager manager
+uv run --project backend --frozen uvicorn actionflow.main:app --host 127.0.0.1 --port 8000
+```
+
+Команда настройки запросит пароль менеджера в терминале. Повторная настройка меняет учётные данные и завершает существующие сессии. Пароли остаются в локальном окружении и вне Git.
+
+Во втором терминале запустите интерфейс:
+
+```powershell
+npm.cmd --prefix frontend ci
+npm.cmd --prefix frontend run dev
+```
+
+Откройте `http://127.0.0.1:5173`, войдите как `manager` и создайте два проекта для одного клиента. Остановите и снова запустите API и PostgreSQL с тем же томом, затем откройте ранее созданный проект из списка. Выход завершает серверную сессию.
+
+Проверки из корня репозитория:
+
+```powershell
+.\scripts\check.ps1
+```
+
 ## Краткое описание
 
 **ActionFlow** — самостоятельный продукт для преобразования корпоративных событий и коммуникаций в контролируемые действия.

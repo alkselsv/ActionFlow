@@ -80,7 +80,7 @@ docs/
 - Коды: `400 malformed_request`, `401 unauthenticated`, `404 not_found`, `409 conflict` (`stale_finding`, `idempotency_conflict`, `chat_already_bound`, `invalid_state`), `413 payload_too_large`, `422 validation_failed` / `invalid_transition`, `503 dependency_unavailable`, `500 internal_error`.
 - Пагинация: `limit` (по умолчанию 50, максимум 100) и непрозрачный `cursor`; ответ `{items, next_cursor}`. В MVP допустим offset-пагинация внутри репозитория, но контракт курсорный.
 - `Idempotency-Key` обязателен для `POST /analyses` и `POST /findings/{id}/actions`, необязателен для импорта. Повтор с тем же ключом и телом возвращает сохранённый ответ с `Idempotent-Replayed: true`; другое тело — `409 idempotency_conflict`. Ключи хранятся 24 часа.
-- Health: `GET /health` — живость процесса; `GET /ready` — проверка PostgreSQL и Temporal, иначе `503`.
+- Health: `GET /health` — живость процесса. В #8 `GET /ready` проверяет PostgreSQL и возвращает `503` при недоступности. Проверка Temporal добавляется вместе с подключением Temporal.
 
 ## HTTP-операции
 
