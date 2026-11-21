@@ -33,6 +33,30 @@ npm.cmd --prefix frontend run dev
 
 В разделе «Переписка» можно повторно загрузить экспорт того же чата. Отчёт показывает новые и обновлённые сообщения, необработанные вложения и записи, которых нет в очередном файле. Чтобы посмотреть сохранённый текст и время наблюдения, откройте «Редакции» под сообщением.
 
+### Подготовка исторического среза
+
+Поднимите Temporal с отдельными базами. Пароль сервера задаётся локально:
+
+```powershell
+$env:TEMPORAL_DB_PASSWORD = 'REPLACE_WITH_LOCAL_TEMPORAL_PASSWORD'
+docker compose -f infra/compose.yml -f infra/temporal.compose.yml up -d temporal-namespace
+docker compose -f infra/compose.yml -f infra/temporal.compose.yml logs temporal-namespace
+```
+
+Дождитесь создания namespace `default`. После применения прикладной миграции запустите worker и диспетчер в отдельных терминалах с тем же `ACTIONFLOW_DATABASE_URL` и `PYTHONPATH=backend/src`, что у API:
+
+```powershell
+uv run --project backend --frozen python -m actionflow.worker
+```
+
+```powershell
+uv run --project backend --frozen python -m actionflow.dispatcher
+```
+
+В проекте выберите период и момент оценки, нажмите «Подготовить срез» и откройте сохранённый вход. Конец периода исключается. Подготовка фиксирует вход и ограничения. Семантический анализ добавляется следующим тикетом.
+
+Чтобы включить проверку перезапуска worker, таймаута и ограниченных повторов на тестовом сервере Temporal, задайте `$env:ACTIONFLOW_TEST_TEMPORAL = '1'` перед `.\scripts\check.ps1`. При первом запуске SDK загружает тестовый сервер.
+
 Проверки из корня репозитория:
 
 ```powershell

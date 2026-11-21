@@ -109,3 +109,16 @@ class ImportReceipt(Base):
     payload_hash: Mapped[str] = mapped_column(String(64))
     report: Mapped[dict] = mapped_column(document)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class SourceObservation(Base):
+    __tablename__ = "source_observation"
+    __table_args__ = (
+        Index("ix_source_observation_revision_recorded", "revision_id", "recorded_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    revision_id: Mapped[str] = mapped_column(ForeignKey("message_revision.id"))
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    source_observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revision: Mapped[MessageRevision] = relationship()

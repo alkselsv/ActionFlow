@@ -59,12 +59,12 @@ export class ApiError extends Error {
   }
 }
 
-export async function request<T>(path: string, body?: object): Promise<T> {
+export async function request<T>(path: string, body?: object, headers: Record<string, string> = {}): Promise<T> {
   const response = await fetch(base + path, {
     credentials: "include",
     ...(body === undefined ? {} : {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...headers },
       body: JSON.stringify(body),
     }),
   });

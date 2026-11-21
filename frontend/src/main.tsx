@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { createRoot } from "react-dom/client";
 import { ApiError, errorMessage, request, uploadTelegram, type Manager, type Project, type ConversationMessage, type MessageRevision } from "./api/client";
 import { ProjectSettingsForm } from "./features/projects/ProjectSettings";
+import { AnalysisPreparation } from "./features/projects/AnalysisPreparation";
 import "./style.css";
 
 function Login({ onLogin }: { onLogin: (manager: Manager) => void }) {
@@ -178,6 +179,7 @@ function Projects({ onExpired }: { onExpired: () => void }) {
       {selected && messages.length === 0 && !busy && <p>Сообщений пока нет.</p>}
       {messageCursor && <button className="quiet" disabled={busy} onClick={() => void perform(() => loadMessages(selected, messageCursor))}>Ещё сообщения</button>}
     </section>}
+    {selected && <AnalysisPreparation key={selected.id} projectId={selected.id} onExpired={onExpired} />}
   </>;
 }
 

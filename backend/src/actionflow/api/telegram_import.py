@@ -12,6 +12,7 @@ from actionflow.persistence.project_settings import (
     Message,
     MessageRevision,
     Participant,
+    SourceObservation,
 )
 
 MAX_BYTES = 50 * 1024 * 1024
@@ -157,6 +158,11 @@ def add_observation(db, message, versions, snapshot, edited, source_observed, no
             known_source is None or source_observed < known_source
         ):
             active.source_observed_at = source_observed
+            db.add(
+                SourceObservation(
+                    revision=active, recorded_at=now, source_observed_at=source_observed
+                )
+            )
         return False, False, False
     is_newer = active is None or (
         edited is not None and edited > (previous_edit or as_utc(message.sent_at))
@@ -190,6 +196,12 @@ def add_observation(db, message, versions, snapshot, edited, source_observed, no
         ordering_uncertain=uncertain,
     )
     db.add(revision)
+    if source_observed is not None:
+        db.add(
+            SourceObservation(
+                revision=revision, recorded_at=now, source_observed_at=source_observed
+            )
+        )
     versions.append(revision)
     if is_newer:
         if active:
