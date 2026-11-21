@@ -1,17 +1,30 @@
+import asyncio
 import os
-from datetime import UTC, datetime
+from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
 from sqlalchemy import inspect
+from temporalio.exceptions import WorkflowAlreadyStartedError
+from temporalio.testing import WorkflowEnvironment
 
 from actionflow.api.app import create_app
+from actionflow.application import analysis_input
 from actionflow.config import Settings
+from actionflow.dispatcher import dispatch_once
+from actionflow.persistence.analysis import OutboxEvent
 from actionflow.persistence.database import database
-from actionflow.persistence.project_settings import Chat, Message, Participant
+from actionflow.persistence.project_settings import (
+    Chat,
+    Message,
+    Participant,
+    SettingsVersion,
+)
 from actionflow.setup_manager import create_manager
+from actionflow.worker import analysis_worker
 
 ORIGIN = {"Origin": "http://127.0.0.1:5173"}
 
@@ -107,6 +120,7 @@ def test_manager_can_reopen_projects_after_restart(tmp_path, monkeypatch):
         assert project["manager_name"] == "Manager"
         check_settings(browser, sessions, project_id, other_id)
         check_repeat_import(browser, other_id, legacy_id)
+        check_analysis(browser, sessions, other_id, monkeypatch)
         assert browser.post("/api/v1/auth/logout", headers=ORIGIN).status_code == 204
         browser.cookies.set("af_session", cookie)
         assert browser.get(f"/api/v1/projects/{project_id}").status_code == 401
@@ -114,6 +128,134 @@ def test_manager_can_reopen_projects_after_restart(tmp_path, monkeypatch):
             browser.get(f"/api/v1/projects/{project_id}/settings/versions").status_code
             == 401
         )
+
+
+def check_analysis(browser, sessions, project_id, monkeypatch):
+    path = f"/api/v1/projects/{project_id}/analyses"
+    payload = {
+        "period_start": "2026-09-16T13:04:00Z",
+        "period_end": "2026-09-16T13:20:00Z",
+        "as_of": "2026-09-16T13:20:00Z",
+        "apply_to_queue": False,
+    }
+    headers = {**ORIGIN, "Idempotency-Key": "analysis-1"}
+    settings_path = f"/api/v1/projects/{project_id}/settings"
+    settings_payload = {
+        "context_text": "Original context",
+        "work_hours": {"weekdays": [1], "start": "09:00", "end": "18:00"},
+        "timezone": "Europe/Moscow",
+        "first_response_minutes": 60,
+        "calendar": {"closed_dates": []},
+        "participant_sides": [],
+    }
+    prior = browser.post(settings_path, headers=ORIGIN, json=settings_payload)
+    assert prior.status_code == 201
+    prior_id = prior.json()["id"]
+    with sessions.begin() as db:
+        db.get(SettingsVersion, prior_id).created_at = datetime(2026, 9, 15, tzinfo=UTC)
+    newer = browser.post(
+        settings_path,
+        headers=ORIGIN,
+        json={**settings_payload, "first_response_minutes": 120},
+    )
+    assert newer.status_code == 201
+    assert (
+        browser.post(
+            path,
+            headers=headers,
+            json={**payload, "settings_version_id": newer.json()["id"]},
+        ).status_code
+        == 422
+    )
+    with monkeypatch.context() as limited:
+        limited.setattr(analysis_input, "MAX_MESSAGES", 2)
+        response = browser.post(path, headers=headers, json=payload)
+        assert response.status_code == 422
+        assert response.json()["error"]["code"] == "analysis_input_too_large"
+    response = browser.post(path, headers=headers, json=payload)
+    assert response.status_code == 202
+    created = response.json()
+    assert created["status"] == "pending"
+    same = browser.post(path, headers=headers, json=payload)
+    assert same.json() == created
+    assert same.headers["Idempotent-Replayed"] == "true"
+    assert (
+        browser.post(
+            path, headers=headers, json={**payload, "apply_to_queue": True}
+        ).status_code
+        == 409
+    )
+    other = browser.post(
+        path, headers={**headers, "Idempotency-Key": "analysis-2"}, json=payload
+    )
+    assert other.status_code == 202
+    assert other.json()["run_id"] != created["run_id"]
+
+    async def verify_dispatch(client, queue):
+        class LostResponse:
+            started = False
+
+            async def start_workflow(self, workflow, run_id, **kwargs):
+                if client is not None:
+                    await client.start_workflow(workflow, run_id, **kwargs)
+                elif self.started:
+                    raise WorkflowAlreadyStartedError(kwargs["id"], workflow)
+                self.started = True
+                raise ConnectionError("Lost response after workflow was accepted")
+
+        gateway = LostResponse()
+
+        async def connect():
+            return gateway
+
+        assert await dispatch_once(sessions, connect, queue)
+        with sessions.begin() as db:
+            from sqlalchemy import select
+
+            event = db.scalar(
+                select(OutboxEvent).where(OutboxEvent.aggregate_id == created["run_id"])
+            )
+            assert event.status == "retrying"
+            event.next_attempt_at -= timedelta(minutes=1)
+        assert await dispatch_once(sessions, connect, queue)
+        if client is None:
+            analysis_input.prepare_input(sessions, created["run_id"])
+
+    async def scenario():
+        if os.environ.get("ACTIONFLOW_TEST_TEMPORAL") != "1":
+            await verify_dispatch(None, "actionflow-test")
+            return
+        async with await WorkflowEnvironment.start_time_skipping() as temporal:
+            with ThreadPoolExecutor(4) as executor:
+                async with analysis_worker(
+                    temporal.client, sessions, "actionflow-test", executor
+                ):
+                    pass
+                await verify_dispatch(temporal.client, "actionflow-test")
+                async with analysis_worker(
+                    temporal.client, sessions, "actionflow-test", executor
+                ):
+                    handle = temporal.client.get_workflow_handle(created["workflow_id"])
+                    await asyncio.wait_for(handle.result(), 20)
+
+    asyncio.run(scenario())
+    status = browser.get(f"/api/v1/analyses/{created['run_id']}").json()
+    assert status["status"] == "succeeded"
+    assert status["stage"] == "input_ready"
+    assert status["settings_version_id"] == prior_id
+    assert status["limitations"]["message_count"] == 3
+    assert status["limitations"]["missing_settings"] is False
+    assert status["limitations"]["context_messages"] == 1
+    saved_path = f"/api/v1/analyses/{created['run_id']}/input"
+    snapshot = browser.get(saved_path).json()
+    assert {item["revision"]["revision_no"] for item in snapshot["items"]} == {1}
+    assert sorted(item["role"] for item in snapshot["items"]) == [
+        "context",
+        "window",
+        "window",
+    ]
+    analysis_input.prepare_input(sessions, created["run_id"])
+    assert browser.get(saved_path).json() == snapshot
 
 
 def check_repeat_import(browser, project_id, legacy_id):

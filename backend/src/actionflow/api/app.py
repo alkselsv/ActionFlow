@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from datetime import UTC, timedelta
 from hashlib import sha256
@@ -16,7 +17,10 @@ from pydantic import BaseModel, StringConstraints
 from sqlalchemy import select, text, tuple_
 from sqlalchemy.exc import IntegrityError, OperationalError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from temporalio.client import Client as TemporalClient
+from temporalio.service import RPCError
 
+from actionflow.api.analyses import register_analysis_routes
 from actionflow.api.project_settings import (
     SettingsInput,
     current_settings,
@@ -126,6 +130,7 @@ def create_app(settings: Settings) -> FastAPI:
             409: "conflict",
             413: "payload_too_large",
             422: "validation_failed",
+            503: "dependency_unavailable",
         }
         return error(
             exc.status_code, code.get(exc.status_code, "http_error"), exc.detail
@@ -167,10 +172,26 @@ def create_app(settings: Settings) -> FastAPI:
     def health():
         return {"status": "ok"}
 
-    @app.get("/ready")
-    def ready():
+    def check_database():
         with engine.connect() as connection:
             connection.execute(text("SELECT 1"))
+
+    @app.get("/ready")
+    async def ready():
+        await asyncio.to_thread(check_database)
+        try:
+            client = await asyncio.wait_for(
+                TemporalClient.connect(
+                    settings.temporal_address, namespace=settings.temporal_namespace
+                ),
+                timeout=3,
+            )
+            if not await asyncio.wait_for(
+                client.service_client.check_health(), timeout=3
+            ):
+                raise HTTPException(503, "Temporal недоступен")
+        except RPCError, OSError, TimeoutError, RuntimeError:
+            raise HTTPException(503, "Temporal недоступен") from None
         return {"status": "ok"}
 
     def transaction():
@@ -475,6 +496,9 @@ def create_app(settings: Settings) -> FastAPI:
             raise HTTPException(404, "Версия настроек не найдена")
         return settings_result(version)
 
+    register_analysis_routes(
+        projects, router, Db, SessionRequired, Depends(check_origin)
+    )
     router.include_router(projects)
     app.include_router(router)
     return app
