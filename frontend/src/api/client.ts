@@ -9,7 +9,27 @@ export type Project = {
   message_count: number;
   settings_version: ProjectSettings | null;
 };
-export type ConversationMessage = { id: string; external_id: string; sent_at: string; text: string; reply_to_external_id: string | null; author: { id: string; name: string | null; side: Side } };
+export type MessageRevision = {
+  id: string;
+  revision_no: number;
+  text: string;
+  reply_to_external_id: string | null;
+  source_type: "message" | "service";
+  service_action: string | null;
+  actor_name: string | null;
+  attachments: Record<string, unknown>;
+  edited_at: string | null;
+  observed_at: string;
+  source_observed_at: string | null;
+  ordering_uncertain: boolean;
+};
+
+export type ConversationMessage = MessageRevision & {
+  revision_id: string;
+  external_id: string;
+  sent_at: string;
+  author: { id: string | null; name: string | null; side: Side | null };
+};
 
 export type Side = "vedita" | "customer" | "unknown";
 export type Participant = {
@@ -55,8 +75,8 @@ export async function request<T>(path: string, body?: object): Promise<T> {
   return response.status === 204 ? undefined as T : response.json();
 }
 
-export async function uploadTelegram<T>(path: string, file: File): Promise<T> {
-  const response = await fetch(base + path, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: await file.arrayBuffer() });
+export async function uploadTelegram<T>(path: string, file: File, key: string): Promise<T> {
+  const response = await fetch(base + path, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", "Idempotency-Key": key }, body: file });
   if (!response.ok) {
     const payload = await response.json().catch(() => null);
     throw new ApiError(response.status, payload?.error?.message ?? "Не удалось загрузить экспорт");

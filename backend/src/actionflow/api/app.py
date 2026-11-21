@@ -12,9 +12,8 @@ from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request, 
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi import Body
 from pydantic import BaseModel, StringConstraints
-from sqlalchemy import select, text
+from sqlalchemy import select, text, tuple_
 from sqlalchemy.exc import IntegrityError, OperationalError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -27,7 +26,12 @@ from actionflow.api.project_settings import (
     settings_result,
     settings_versions,
 )
-from actionflow.api.telegram_import import import_chat
+from actionflow.api.telegram_import import (
+    MAX_BYTES,
+    as_utc,
+    import_chat,
+    revision_result,
+)
 from actionflow.config import Settings
 from actionflow.persistence.database import (
     Client,
@@ -37,7 +41,13 @@ from actionflow.persistence.database import (
     database,
     utc_now,
 )
-from actionflow.persistence.project_settings import Chat, Message, Participant, SettingsVersion
+from actionflow.persistence.project_settings import (
+    Chat,
+    Message,
+    MessageRevision,
+    Participant,
+    SettingsVersion,
+)
 
 COOKIE = "af_session"
 SESSION_SECONDS = 12 * 60 * 60
@@ -88,7 +98,8 @@ def create_app(settings: Settings) -> FastAPI:
         allow_origins=[settings.frontend_origin],
         allow_credentials=True,
         allow_methods=["GET", "POST"],
-        allow_headers=["Content-Type"],
+        allow_headers=["Content-Type", "Idempotency-Key"],
+        expose_headers=["Idempotent-Replayed"],
     )
 
     def error(status, code, message):
@@ -106,11 +117,15 @@ def create_app(settings: Settings) -> FastAPI:
 
     @app.exception_handler(StarletteHTTPException)
     async def http_error(_request, exc):
+        if isinstance(exc.detail, dict):
+            return error(exc.status_code, exc.detail["code"], exc.detail["message"])
         code = {
             400: "malformed_request",
             401: "unauthenticated",
             404: "not_found",
             409: "conflict",
+            413: "payload_too_large",
+            422: "validation_failed",
         }
         return error(
             exc.status_code, code.get(exc.status_code, "http_error"), exc.detail
@@ -278,32 +293,136 @@ def create_app(settings: Settings) -> FastAPI:
         version = current_settings(db, project_id)
         return project_result(project, settings_result(version) if version else None)
 
-    @projects.post("/projects/{project_id}/messages/import", dependencies=[Depends(check_origin)])
-    def upload_chat(project_id: str, payload: bytes = Body(media_type="application/json"), db=Db):
-        project = require_project(db, project_id)
-        return import_chat(db, project, payload)
+    async def read_export(request: Request):
+        payload = bytearray()
+        async for chunk in request.stream():
+            if len(payload) + len(chunk) > MAX_BYTES:
+                raise HTTPException(413, "Максимальный размер экспорта — 50 МБ")
+            payload.extend(chunk)
+        return payload
+
+    ExportBody = Depends(read_export)
+
+    @projects.post(
+        "/projects/{project_id}/messages/import", dependencies=[Depends(check_origin)]
+    )
+    def upload_chat(
+        project_id: str, request: Request, response: Response, payload=ExportBody, db=Db
+    ):
+        project = require_project(db, project_id, lock=True)
+        key = request.headers.get("Idempotency-Key")
+        if key is not None:
+            key = key.strip()
+            if not 0 < len(key) <= 200:
+                raise HTTPException(400, "Некорректный ключ повтора")
+        try:
+            report, replayed = import_chat(db, project, payload, key)
+        except IntegrityError:
+            db.rollback()
+            raise HTTPException(
+                409, "Чат уже привязан или импорт изменился. Повторите запрос."
+            ) from None
+        if replayed:
+            response.headers["Idempotent-Replayed"] = "true"
+        return report
 
     @projects.get("/projects/{project_id}/messages")
-    def list_messages(project_id: str, limit: int = Query(100, ge=1, le=500), cursor: str | None = None, db=Db):
+    def list_messages(
+        project_id: str,
+        limit: int = Query(100, ge=1, le=500),
+        cursor: str | None = None,
+        db=Db,
+    ):
         require_project(db, project_id)
         chat = db.scalar(select(Chat).where(Chat.project_id == project_id))
         if chat is None:
             return {"chat": None, "items": [], "next_cursor": None}
-        query = select(Message).where(Message.chat_id == chat.id).order_by(Message.sent_at, Message.external_id)
+        query = (
+            select(Message)
+            .where(Message.chat_id == chat.id)
+            .order_by(Message.sent_at, Message.external_id)
+        )
         if cursor:
-            query = query.where(Message.external_id > cursor)
+            previous = db.scalar(
+                select(Message).where(
+                    Message.chat_id == chat.id, Message.external_id == cursor
+                )
+            )
+            if previous is None:
+                raise HTTPException(400, "Некорректный курсор переписки")
+            query = query.where(
+                tuple_(Message.sent_at, Message.external_id)
+                > (previous.sent_at, previous.external_id)
+            )
         rows = list(db.scalars(query.limit(limit + 1)))
         items = rows[:limit]
-        participants = {person.id: person for person in db.scalars(select(Participant).where(Participant.chat_id == chat.id))}
+        participants = {
+            person.id: person
+            for person in db.scalars(
+                select(Participant).where(Participant.chat_id == chat.id)
+            )
+        }
         settings_version = current_settings(db, project_id)
-        sides = {side.source_author_id: side.side for side in settings_version.sides} if settings_version else {}
-        return {"chat": {"id": chat.id, "name": chat.name}, "items": [
-            {"id": item.id, "external_id": item.external_id, "sent_at": item.sent_at.isoformat(), "text": item.text,
-             "text_format": item.text_format, "reply_to_external_id": item.reply_to_external_id,
-             "author": {"id": participants[item.participant_id].source_author_id,
-                        "name": participants[item.participant_id].display_name,
-                        "side": sides.get(participants[item.participant_id].source_author_id, "unknown")}}
-            for item in items], "next_cursor": items[-1].external_id if len(rows) > limit else None}
+        sides = (
+            {side.source_author_id: side.side for side in settings_version.sides}
+            if settings_version
+            else {}
+        )
+        active = {
+            revision.message_id: revision
+            for revision in db.scalars(
+                select(MessageRevision).where(
+                    MessageRevision.message_id.in_([item.id for item in items]),
+                    MessageRevision.is_current.is_(True),
+                )
+            )
+        }
+        output = []
+        for item in items:
+            revision = active[item.id]
+            details = revision_result(revision)
+            details["revision_id"] = details.pop("id")
+            author = participants.get(item.participant_id)
+            output.append(
+                {
+                    **details,
+                    "id": item.id,
+                    "external_id": item.external_id,
+                    "sent_at": as_utc(item.sent_at),
+                    "last_observed_at": as_utc(item.observed_at),
+                    "author": {
+                        "id": author.source_author_id if author else None,
+                        "name": author.display_name if author else None,
+                        "side": None
+                        if details["source_type"] == "service"
+                        else sides.get(author.source_author_id, "unknown")
+                        if author
+                        else "unknown",
+                    },
+                }
+            )
+        return {
+            "chat": {"id": chat.id, "name": chat.name},
+            "items": output,
+            "next_cursor": items[-1].external_id if len(rows) > limit else None,
+        }
+
+    @projects.get("/projects/{project_id}/messages/{message_id}/revisions")
+    def list_revisions(project_id: str, message_id: str, db=Db):
+        require_project(db, project_id)
+        message = db.scalar(
+            select(Message)
+            .join(Chat)
+            .where(Chat.project_id == project_id, Message.id == message_id)
+        )
+        if message is None:
+            raise HTTPException(404, "Сообщение не найдено")
+        revisions = db.scalars(
+            select(MessageRevision)
+            .where(MessageRevision.message_id == message.id)
+            .order_by(MessageRevision.revision_no)
+        )
+        return {"items": [revision_result(revision) for revision in revisions]}
 
     @projects.get("/projects/{project_id}/participants")
     def get_participants(project_id: str, db=Db):
