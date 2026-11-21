@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { createRoot } from "react-dom/client";
 import { ApiError, errorMessage, request, type Manager, type Project } from "./api/client";
+import { ProjectSettingsForm } from "./features/projects/ProjectSettings";
 import "./style.css";
 
 function Login({ onLogin }: { onLogin: (manager: Manager) => void }) {
@@ -36,6 +37,7 @@ function Projects({ onExpired }: { onExpired: () => void }) {
   const [projects, setProjects] = useState<Project[] | null>(null);
   const [next, setNext] = useState<string | null>(null);
   const [selected, setSelected] = useState<Project | null>(null);
+  const [selectionRevision, setSelectionRevision] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -85,6 +87,7 @@ function Projects({ onExpired }: { onExpired: () => void }) {
         {!!projects?.length && <ul>{projects.map((project) => <li key={project.id}>
           <button className="project" disabled={busy} onClick={() => void perform(async () => {
             setSelected(await request<Project>("/projects/" + project.id));
+            setSelectionRevision((revision) => revision + 1);
           })}>
             <strong>{project.name}</strong><span>{project.client.name}</span>
           </button>
@@ -105,6 +108,11 @@ function Projects({ onExpired }: { onExpired: () => void }) {
         </form>
       </section>
     </div>
+    {selected && <ProjectSettingsForm key={selected.id + ":" + selectionRevision} project={selected} onExpired={onExpired} onSaved={(settings) => {
+      setSelected((project) => project?.id === selected.id
+        ? { ...project, manager_name: settings.manager_name, settings_version: settings }
+        : project);
+    }} />}
   </>;
 }
 

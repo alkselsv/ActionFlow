@@ -94,8 +94,15 @@ docs/
 | `PATCH /projects/{id}` | `project_name?`, `manager_name?` | обновлённый проект | `404`, `422` |
 | `GET /projects/{id}/participants` | — | участники с `source_author_id`, стороной и версией настроек | `404` |
 | `GET /projects/{id}/settings` | — | текущая версия контекста, SLA, календаря и сторон | `404` |
-| `POST /projects/{id}/settings` | `context_text`, `work_hours`, `timezone`, `first_response_minutes`, `calendar`, `participant_sides` | `201` новая неизменяемая версия | `404`, `422` |
-| `GET /projects/{id}/settings/versions` | — | история версий | `404` |
+| `POST /projects/{id}/settings` | `context_text`, `agreements`, `manager_name?`, `client_type`, `work_hours`, `timezone`, `first_response_minutes`, `calendar`, `participant_sides` | `201` новая неизменяемая версия | `404`, `422` |
+| `GET /projects/{id}/settings/versions` | `limit`, `cursor` | история версий, новые первыми | `404` |
+| `GET /projects/{id}/settings/versions/{version_id}` | — | неизменяемая версия этого проекта | `404` |
+
+Для #9 `work_hours` содержит дни недели (1 — понедельник, 7 — воскресенье), один интервал `start`–`end` в формате ЧЧ:ММ. `calendar.closed_dates` — нерабочие даты в формате ГГГГ-ММ-ДД. `timezone` — имя IANA. Профили `north` и `south` в интерфейсе подставляют SLA 60 и 120 рабочих минут из AF-002; проект сохраняет своё выбранное значение. `custom` используется для ручной настройки без профиля.
+
+Стороны `vedita`, `customer`, `unknown` привязываются к `source_author_id` внутри проекта. Привязку можно сохранить до появления чата или участника. Список участников объединяет сохранённые привязки и наблюдённых авторов из чата проекта. У наблюдённого автора `imported=true`, даже если у него нет отображаемого имени. Автор без привязки отображается как `unknown`.
+
+При сохранении интерфейс передаёт `base_version_id` просмотренной версии или `null` для первой версии. Если условия уже изменились, сервер возвращает `409` и сохраняет все имеющиеся версии.
 
 Создание проекта не создаёт чат: чат появляется при первом импорте. Один проект имеет один чат; повторная привязка другого чата — `409 chat_already_bound`. Стороны участников задаются в версии настроек; изменение любой настройки создаёт новую версию, старые запуски продолжают ссылаться на прежнюю.
 
@@ -280,8 +287,8 @@ Dispatcher — отдельный процесс с циклом PostgreSQL, б�
 | `project` | `id`, `client_id`, `name`, `manager_name`, `created_at` |
 | `chat` | `id`, `project_id unique`, `source`, `external_id`, `name`, `type`; `unique(source, external_id)` |
 | `participant` | `id`, `chat_id`, `source_author_id`, `display_name`; `unique(chat_id, source_author_id)` |
-| `settings_version` | `id`, `project_id`, `version_no`, `context_text`, `work_hours jsonb`, `timezone`, `first_response_minutes`, `calendar jsonb`, `created_at`; `unique(project_id, version_no)` |
-| `participant_side` | `settings_version_id`, `participant_id`, `side`; PK по трём полям |
+| `settings_version` | `id`, `project_id`, `version_no`, `context_text`, `agreements`, `manager_name`, `client_type`, `work_hours jsonb`, `timezone`, `first_response_minutes`, `calendar jsonb`, `created_at`; `unique(project_id, version_no)` |
+| `participant_side` | `settings_version_id`, `source_author_id`, `side`; PK по версии и внешнему ID автора, включая привязки до импорта |
 | `message` | `id`, `chat_id`, `external_id`, `author_participant_id?`, `source_type`, `sent_at`, `reply_to_message_id?`; `unique(chat_id, external_id)` |
 | `message_revision` | `id`, `message_id`, `revision_no`, `text?`, `text_format jsonb`, `edited_at?`, `observed_at`, `source_payload jsonb`; `unique(message_id, revision_no)` |
 | `message_attachment` | `id`, `revision_id`, `kind`, `media_type`, `mime_type`, `duration_seconds`, `metadata jsonb` |
