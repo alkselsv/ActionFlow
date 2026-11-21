@@ -1,0 +1,37 @@
+name: Manager project
+
+on:
+  pull_request:
+    branches: [dev]
+
+permissions:
+  contents: read
+
+jobs:
+  manager-project:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: frontend/.node-version
+      - name: Install uv and locked dependencies
+        run: |
+          pipx install uv==0.13.9
+          uv sync --project backend --frozen
+          npm --prefix frontend ci
+      - name: Start PostgreSQL using Compose
+        run: |
+          password="$(openssl rand -hex 24)"
+          echo "::add-mask::$password"
+          export ACTIONFLOW_DB_PASSWORD="$password"
+          docker compose -f infra/compose.yml up --wait postgres
+          echo "ACTIONFLOW_EMPTY_TEST_DATABASE_URL=postgresql+psycopg://actionflow:$password@127.0.0.1:5432/actionflow" >> "$GITHUB_ENV"
+      - name: Check migrations, manager session and project persistence
+        run: uv run --project backend --frozen pytest -c backend/pyproject.toml backend/tests
+      - name: Check lint, frontend and fixtures
+        run: |
+          uv run --project backend --frozen ruff check backend
+          npm --prefix frontend run build
+          uv run --project backend --frozen python scripts/validate_fixtures.py

@@ -1,8 +1,10 @@
+import os
 from pathlib import Path
 
 from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
+from sqlalchemy import inspect
 
 from actionflow.api.app import create_app
 from actionflow.config import Settings
@@ -13,12 +15,21 @@ ORIGIN = {"Origin": "http://127.0.0.1:5173"}
 
 
 def test_manager_can_reopen_projects_after_restart(tmp_path, monkeypatch):
-    settings = Settings(f"sqlite:///{tmp_path / 'actionflow.db'}")
+    settings = Settings(
+        os.environ.get("ACTIONFLOW_EMPTY_TEST_DATABASE_URL")
+        or f"sqlite:///{tmp_path / 'actionflow.db'}"
+    )
+    engine, sessions = database(settings.database_url)
+    try:
+        assert not inspect(engine).get_table_names(), (
+            "Integration test requires an empty database"
+        )
+    finally:
+        engine.dispose()
     monkeypatch.setenv("ACTIONFLOW_DATABASE_URL", settings.database_url)
     migration = Config(Path(__file__).resolve().parents[2] / "alembic.ini")
     command.upgrade(migration, "head")
     command.check(migration)
-    engine, sessions = database(settings.database_url)
     create_manager(sessions, "manager", "synthetic-test-password")
     engine.dispose()
     with TestClient(create_app(settings)) as browser:
