@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { createRoot } from "react-dom/client";
-import { ApiError, errorMessage, request, type Manager, type Project } from "./api/client";
+import { ApiError, errorMessage, request, uploadTelegram, type Manager, type Project, type ConversationMessage } from "./api/client";
 import { ProjectSettingsForm } from "./features/projects/ProjectSettings";
 import "./style.css";
 
@@ -40,6 +40,8 @@ function Projects({ onExpired }: { onExpired: () => void }) {
   const [selectionRevision, setSelectionRevision] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [messages, setMessages] = useState<ConversationMessage[]>([]);
+  const [importReport, setImportReport] = useState("");
 
   async function perform(action: () => Promise<void>) {
     setBusy(true);
@@ -76,6 +78,22 @@ function Projects({ onExpired }: { onExpired: () => void }) {
     });
   }
 
+  async function loadMessages(project: Project) {
+    const result = await request<{items: ConversationMessage[] }>(`/projects/${project.id}/messages`);
+    setMessages(result.items);
+  }
+
+  async function importFile(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const file = new FormData(event.currentTarget).get("telegram") as File;
+    if (!selected || !file?.size) return;
+    await perform(async () => {
+      const report = await uploadTelegram<{imported: number; skipped: number}>(`/projects/${selected.id}/messages/import`, file);
+      setImportReport(`Импортировано: ${report.imported}, пропущено: ${report.skipped}`);
+      await loadMessages(selected);
+    });
+  }
+
   return <>
     <h1>Проекты</h1>
     {busy && <p role="status">Загрузка…</p>}
@@ -87,6 +105,8 @@ function Projects({ onExpired }: { onExpired: () => void }) {
         {!!projects?.length && <ul>{projects.map((project) => <li key={project.id}>
           <button className="project" disabled={busy} onClick={() => void perform(async () => {
             setSelected(await request<Project>("/projects/" + project.id));
+            setMessages([]); setImportReport("");
+            await loadMessages(project);
             setSelectionRevision((revision) => revision + 1);
           })}>
             <strong>{project.name}</strong><span>{project.client.name}</span>
@@ -113,6 +133,15 @@ function Projects({ onExpired }: { onExpired: () => void }) {
         ? { ...project, manager_name: settings.manager_name, settings_version: settings }
         : project);
     }} />}
+    {selected && <section className="panel conversation"><h2>Переписка · {selected.name}</h2>
+      <form onSubmit={importFile}><label>Экспорт Telegram JSON<input type="file" name="telegram" accept="application/json,.json" required /></label><button disabled={busy}>Импортировать</button></form>
+      {importReport && <p role="status">{importReport}</p>}
+      {messages.map((message) => <article key={message.id} id={"message-" + message.external_id}>
+        <strong>{message.author.name ?? message.author.id}</strong> · {message.author.side} · <time>{new Date(message.sent_at).toLocaleString()}</time>
+        <p>{message.text || "[Нет текста]"}</p>{message.reply_to_external_id && <a href={"#message-" + message.reply_to_external_id}>Перейти к сообщению, на которое ответили</a>}
+      </article>)}
+      {selected && messages.length === 0 && !busy && <p>Сообщений пока нет.</p>}
+    </section>}
   </>;
 }
 

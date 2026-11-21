@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request, 
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi import Body
 from pydantic import BaseModel, StringConstraints
 from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError, OperationalError
@@ -26,6 +27,7 @@ from actionflow.api.project_settings import (
     settings_result,
     settings_versions,
 )
+from actionflow.api.telegram_import import import_chat
 from actionflow.config import Settings
 from actionflow.persistence.database import (
     Client,
@@ -35,7 +37,7 @@ from actionflow.persistence.database import (
     database,
     utc_now,
 )
-from actionflow.persistence.project_settings import SettingsVersion
+from actionflow.persistence.project_settings import Chat, Message, Participant, SettingsVersion
 
 COOKIE = "af_session"
 SESSION_SECONDS = 12 * 60 * 60
@@ -275,6 +277,33 @@ def create_app(settings: Settings) -> FastAPI:
         project = require_project(db, project_id)
         version = current_settings(db, project_id)
         return project_result(project, settings_result(version) if version else None)
+
+    @projects.post("/projects/{project_id}/messages/import", dependencies=[Depends(check_origin)])
+    def upload_chat(project_id: str, payload: bytes = Body(media_type="application/json"), db=Db):
+        project = require_project(db, project_id)
+        return import_chat(db, project, payload)
+
+    @projects.get("/projects/{project_id}/messages")
+    def list_messages(project_id: str, limit: int = Query(100, ge=1, le=500), cursor: str | None = None, db=Db):
+        require_project(db, project_id)
+        chat = db.scalar(select(Chat).where(Chat.project_id == project_id))
+        if chat is None:
+            return {"chat": None, "items": [], "next_cursor": None}
+        query = select(Message).where(Message.chat_id == chat.id).order_by(Message.sent_at, Message.external_id)
+        if cursor:
+            query = query.where(Message.external_id > cursor)
+        rows = list(db.scalars(query.limit(limit + 1)))
+        items = rows[:limit]
+        participants = {person.id: person for person in db.scalars(select(Participant).where(Participant.chat_id == chat.id))}
+        settings_version = current_settings(db, project_id)
+        sides = {side.source_author_id: side.side for side in settings_version.sides} if settings_version else {}
+        return {"chat": {"id": chat.id, "name": chat.name}, "items": [
+            {"id": item.id, "external_id": item.external_id, "sent_at": item.sent_at.isoformat(), "text": item.text,
+             "text_format": item.text_format, "reply_to_external_id": item.reply_to_external_id,
+             "author": {"id": participants[item.participant_id].source_author_id,
+                        "name": participants[item.participant_id].display_name,
+                        "side": sides.get(participants[item.participant_id].source_author_id, "unknown")}}
+            for item in items], "next_cursor": items[-1].external_id if len(rows) > limit else None}
 
     @projects.get("/projects/{project_id}/participants")
     def get_participants(project_id: str, db=Db):

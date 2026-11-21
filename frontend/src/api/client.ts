@@ -9,6 +9,7 @@ export type Project = {
   message_count: number;
   settings_version: ProjectSettings | null;
 };
+export type ConversationMessage = { id: string; external_id: string; sent_at: string; text: string; reply_to_external_id: string | null; author: { id: string; name: string | null; side: Side } };
 
 export type Side = "vedita" | "customer" | "unknown";
 export type Participant = {
@@ -52,6 +53,15 @@ export async function request<T>(path: string, body?: object): Promise<T> {
     throw new ApiError(response.status, payload?.error?.message ?? "Не удалось выполнить запрос");
   }
   return response.status === 204 ? undefined as T : response.json();
+}
+
+export async function uploadTelegram<T>(path: string, file: File): Promise<T> {
+  const response = await fetch(base + path, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: await file.arrayBuffer() });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    throw new ApiError(response.status, payload?.error?.message ?? "Не удалось загрузить экспорт");
+  }
+  return response.json();
 }
 
 export function errorMessage(error: unknown) {
