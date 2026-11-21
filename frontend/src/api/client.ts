@@ -7,6 +7,29 @@ export type Project = {
   name: string;
   manager_name: string;
   message_count: number;
+  settings_version: ProjectSettings | null;
+};
+
+export type Side = "vedita" | "customer" | "unknown";
+export type Participant = {
+  source_author_id: string;
+  display_name: string | null;
+  imported: boolean;
+  side: Side;
+};
+export type ProjectSettings = {
+  id: string;
+  version_no: number;
+  created_at: string;
+  context_text: string;
+  agreements: string;
+  manager_name: string;
+  client_type: "north" | "south" | "custom";
+  work_hours: { weekdays: number[]; start: string; end: string };
+  timezone: string;
+  first_response_minutes: number;
+  calendar: { closed_dates: string[] };
+  participant_sides: Pick<Participant, "source_author_id" | "side">[];
 };
 
 export class ApiError extends Error {

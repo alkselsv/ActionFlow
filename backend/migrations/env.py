@@ -2,6 +2,9 @@ from alembic import context
 
 from actionflow.config import Settings
 from actionflow.persistence.database import Base, database
+from actionflow.persistence.project_settings import SettingsVersion
+
+assert SettingsVersion.metadata is Base.metadata
 
 settings = Settings.from_env()
 

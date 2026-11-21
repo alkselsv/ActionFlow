@@ -17,6 +17,15 @@ from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError, OperationalError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from actionflow.api.project_settings import (
+    SettingsInput,
+    current_settings,
+    participants_result,
+    require_project,
+    save_settings,
+    settings_result,
+    settings_versions,
+)
 from actionflow.config import Settings
 from actionflow.persistence.database import (
     Client,
@@ -26,6 +35,7 @@ from actionflow.persistence.database import (
     database,
     utc_now,
 )
+from actionflow.persistence.project_settings import SettingsVersion
 
 COOKIE = "af_session"
 SESSION_SECONDS = 12 * 60 * 60
@@ -45,7 +55,7 @@ class ProjectInput(BaseModel):
     manager_name: Name
 
 
-def project_result(project: Project):
+def project_result(project: Project, settings_version=None):
     created = project.created_at
     if created.tzinfo is None:
         created = created.replace(tzinfo=UTC)
@@ -57,7 +67,7 @@ def project_result(project: Project):
         "created_at": created.astimezone(UTC).isoformat().replace("+00:00", "Z"),
         "message_count": 0,
         "chat": None,
-        "settings_version": None,
+        "settings_version": settings_version,
     }
 
 
@@ -108,6 +118,24 @@ def create_app(settings: Settings) -> FastAPI:
     async def validation_error(_request, exc):
         if any(item["type"] == "json_invalid" for item in exc.errors()):
             return error(400, "malformed_request", "Некорректный JSON")
+        for item in exc.errors():
+            field = item["loc"][1:2]
+            if field == ("timezone",):
+                return error(
+                    422,
+                    "validation_failed",
+                    "Укажите часовой пояс IANA, например Europe/Moscow",
+                )
+            if field == ("calendar",):
+                return error(
+                    422, "validation_failed", "Проверьте даты исключений календаря"
+                )
+            if field == ("work_hours",):
+                return error(
+                    422,
+                    "validation_failed",
+                    "Проверьте рабочие дни и время начала и окончания",
+                )
         return error(422, "validation_failed", "Проверьте заполнение полей")
 
     @app.exception_handler(OperationalError)
@@ -244,10 +272,60 @@ def create_app(settings: Settings) -> FastAPI:
 
     @projects.get("/projects/{project_id}")
     def get_project(project_id: str, db=Db):
-        project = db.get(Project, project_id)
-        if project is None:
-            raise HTTPException(404, "Проект не найден")
-        return project_result(project)
+        project = require_project(db, project_id)
+        version = current_settings(db, project_id)
+        return project_result(project, settings_result(version) if version else None)
+
+    @projects.get("/projects/{project_id}/participants")
+    def get_participants(project_id: str, db=Db):
+        require_project(db, project_id)
+        return participants_result(db, project_id, current_settings(db, project_id))
+
+    @projects.get("/projects/{project_id}/settings")
+    def get_settings(project_id: str, db=Db):
+        require_project(db, project_id)
+        version = current_settings(db, project_id)
+        if version is None:
+            raise HTTPException(404, "Настройки проекта ещё не сохранены")
+        return settings_result(version)
+
+    @projects.post(
+        "/projects/{project_id}/settings",
+        status_code=201,
+        dependencies=[Depends(check_origin)],
+    )
+    def post_settings(project_id: str, data: SettingsInput, db=Db):
+        project = require_project(db, project_id, lock=True)
+        return save_settings(db, project, data)
+
+    @projects.get("/projects/{project_id}/settings/versions")
+    def get_versions(
+        project_id: str,
+        limit: int = Query(50, ge=1, le=100),
+        cursor: int | None = Query(None, ge=1),
+        db=Db,
+    ):
+        require_project(db, project_id)
+        query = settings_versions(project_id).limit(limit + 1)
+        if cursor is not None:
+            query = query.where(SettingsVersion.version_no < cursor)
+        versions = list(db.scalars(query))
+        return {
+            "items": [settings_result(version) for version in versions[:limit]],
+            "next_cursor": str(versions[limit - 1].version_no)
+            if len(versions) > limit
+            else None,
+        }
+
+    @projects.get("/projects/{project_id}/settings/versions/{version_id}")
+    def get_version(project_id: str, version_id: str, db=Db):
+        require_project(db, project_id)
+        version = db.scalar(
+            settings_versions(project_id).where(SettingsVersion.id == version_id)
+        )
+        if version is None:
+            raise HTTPException(404, "Версия настроек не найдена")
+        return settings_result(version)
 
     router.include_router(projects)
     app.include_router(router)
