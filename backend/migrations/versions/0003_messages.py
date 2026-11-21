@@ -25,7 +25,9 @@ def upgrade():
         sa.Column("reply_to_external_id", sa.String(200)),
         sa.UniqueConstraint("chat_id", "external_id"),
     )
-    op.create_index("ix_message_chat_sent", "message", ["chat_id", "sent_at", "external_id"])
+    op.create_index(
+        "ix_message_chat_sent", "message", ["chat_id", "sent_at", "external_id"]
+    )
 
 
 def downgrade():
