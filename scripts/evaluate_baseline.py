@@ -186,9 +186,19 @@ def score_slice(sessions, run_id, external_ids, expected):
                 FindingObservation, FindingObservation.candidate_id == Candidate.id
             )
             .where(Candidate.run_id == run_id)
-            .order_by(Candidate.candidate_key)
         )
-        for candidate, observation in rows:
+
+        def evidence_order(row):
+            candidate, observation = row
+            evidence_ids = tuple(
+                sorted(
+                    ids.get(item["message_id"], -1)
+                    for item in candidate.raw_payload["evidence"]
+                )
+            )
+            return (observation is None, -len(set(evidence_ids)), evidence_ids)
+
+        for candidate, observation in sorted(rows, key=evidence_order):
             metrics = totals[candidate.finding_type]
             if candidate.validation_status != "valid":
                 metrics["invalid"] += 1
