@@ -21,8 +21,8 @@ from actionflow.detectors.contracts import (
 )
 
 MODEL_ID = "local-baseline-unanswered-v1"
-DETECTOR_VERSION = "local-unanswered-v2"
-PROMPT_VERSION = "unanswered-rules-v2"
+DETECTOR_VERSION = "local-unanswered-v3"
+PROMPT_VERSION = "unanswered-rules-v3"
 SCHEMA_VERSION = "detector_result.v1"
 
 _QUESTION_WORDS = (
@@ -139,6 +139,13 @@ _SKIP_PHRASES = (
     "ожидаем",
 )
 _TIMING_QUESTION = re.compile(r"(?:когда\b|во сколько\b)[^?]*\?")
+_BLOCKED_OPERATION = re.compile(
+    r"\bне (?:переда[её]т|передают|выгружа[её]т|выгружают|принима[её]т|принимают)\s+"
+    r"(?:заказы|платежи|данные|документы)\b"
+)
+_ESCALATION = re.compile(
+    r"\b(?:остановим работы|приостановим работы|пересмотр(?:еть|а) договор\w*)\b"
+)
 _SCHEDULE_ANSWER = re.compile(
     r"(?:(?:покажем|провед[её]м|начн[её]м|будет готов[ао]?) )?"
     r"(?:сегодня|завтра|послезавтра) в (?:[01]?\d|2[0-3]):[0-5]\d[.!]?"
@@ -161,6 +168,8 @@ def _is_request(message: InputMessage) -> bool:
         return False
     if "?" not in text and len(text) <= 60 and _has_any(text, _SKIP_PHRASES):
         return False
+    if _BLOCKED_OPERATION.search(text):
+        return True
     if _has_any(text, ("пока не получили", "не работает", "снова сбрасывается")):
         return False
     return _has_any(text, _QUESTION_WORDS)
@@ -214,6 +223,7 @@ def _candidate(
     anchor: InputMessage,
     responses: list[InputMessage],
     unknown_after: bool,
+    escalation: InputMessage | None,
 ) -> Candidate | None:
     if any(_is_substantive(anchor, item) for item in responses):
         return None
@@ -269,6 +279,15 @@ def _candidate(
                 quote=_quote(item.text),
             )
         )
+    if escalation is not None:
+        evidence.append(
+            Evidence(
+                role="supporting",
+                message_id=escalation.message_id,
+                revision_id=escalation.revision_id,
+                quote=_quote(escalation.text),
+            )
+        )
 
     confidence = 0.8 if "?" in anchor.text else 0.68
     if anchor.side == "unknown":
@@ -289,6 +308,7 @@ def _candidate(
         confidence=confidence,
         priority_hint="unknown",
         suggested_action="reply",
+        explicit_risk=escalation is not None,
         evidence=evidence,
         limitations=limitations,
     )
@@ -323,7 +343,21 @@ class LocalBaselineDetector:
                 if item.side == "vedita" and item.source_type == "message"
             ]
             unknown_after = any(item.side == "unknown" for item in segment)
-            candidate = _candidate(anchor, responses, unknown_after)
+            escalation = (
+                next(
+                    (
+                        item
+                        for item in segment
+                        if item.side == "customer"
+                        and item.source_type == "message"
+                        and _ESCALATION.search(_normal(item.text))
+                    ),
+                    None,
+                )
+                if _BLOCKED_OPERATION.search(_normal(anchor.text))
+                else None
+            )
+            candidate = _candidate(anchor, responses, unknown_after, escalation)
             if candidate is not None:
                 candidates.append(candidate)
 

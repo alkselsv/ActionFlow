@@ -135,6 +135,26 @@ def test_concrete_schedule_answers_only_a_question_about_timing(
     assert bool(result.candidates) is is_open
 
 
+def test_blocked_operation_is_an_open_request_with_linked_escalation():
+    blocked = message(1, "customer", "Интеграция снова не передаёт заказы.")
+    reaction = message(2, "vedita", "Проверяем журналы, вернусь с результатом.")
+    escalation = message(
+        3, "customer", "Если не восстановите обмен, мы остановим работы."
+    )
+    [item] = (
+        LocalBaselineDetector()
+        .detect(request(blocked, reaction, escalation))
+        .candidates
+    )
+    assert item.subject.anchor_message_id == blocked.message_id
+    assert item.explicit_risk
+    assert [evidence.message_id for evidence in item.evidence] == [
+        blocked.message_id,
+        reaction.message_id,
+        escalation.message_id,
+    ]
+
+
 def test_attachment_response_is_flagged_as_incomplete():
     question = message(1, "customer", "Пришлите, пожалуйста, отчёт.")
     attachment = message(

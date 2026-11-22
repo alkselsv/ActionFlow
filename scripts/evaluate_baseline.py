@@ -55,7 +55,7 @@ SLICES = (
         "15T10:05",
         (
             ("complaint", 1, (1, 2, 3)),
-            ("unanswered", 3, (3, 4), "met", "15T07:13", "15T06:35"),
+            ("unanswered", 3, (3, 4, 6), "met", "15T07:13", "15T06:35"),
             ("commitment", 4, (4, 6)),
         ),
     ),
@@ -202,6 +202,9 @@ def score_slice(sessions, run_id, external_ids, expected):
             metrics = totals[candidate.finding_type]
             if candidate.validation_status != "valid":
                 metrics["invalid"] += 1
+                continue
+            if observation is None:
+                # A later update can replace the same card's observation in this run.
                 continue
             if observation is not None and observation.commitment_status in {
                 "fulfilled",
