@@ -1,3 +1,4 @@
+from actionflow.domain.commitments import DueResult, parse_due
 from actionflow.domain.priority import (
     PriorityResult,
     PrioritySignals,
@@ -11,6 +12,7 @@ from actionflow.domain.sla import (
 )
 
 __all__ = [
+    "DueResult",
     "PriorityResult",
     "PrioritySignals",
     "SlaPolicy",
@@ -18,4 +20,5 @@ __all__ = [
     "add_working_minutes",
     "calculate_priority",
     "evaluate_first_response",
+    "parse_due",
 ]

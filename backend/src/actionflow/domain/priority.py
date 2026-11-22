@@ -19,6 +19,7 @@ class PrioritySignals:
     sla_state: str = "not_calculated"
     commitment_due_at: datetime | None = None
     commitment_status: str | None = None
+    commitment_due_uncertain: bool = False
     explicit_risk: bool = False
     limitations: tuple[str, ...] = ()
 
@@ -59,12 +60,24 @@ def calculate_priority(signals: PrioritySignals) -> PriorityResult:
             else None
         )
         active = signals.commitment_status in (None, "open", "pending")
-        if due is not None and active and _utc(signals.as_of) > due:
-            priority = "medium" if uncertain else "high"
-            reasons.append("commitment_deadline_missed")
-        elif due is not None and active:
+        completed = signals.commitment_status in ("fulfilled", "cancelled")
+        if completed and not signals.explicit_risk:
             priority = "low"
-            reasons.append("commitment_deadline_in_future")
+            reasons.append("commitment_completed")
+        elif due is not None and active and _utc(signals.as_of) > due:
+            if signals.commitment_due_uncertain:
+                priority = "medium"
+                reasons.append("commitment_deadline_missed_uncertain")
+            else:
+                priority = "high"
+                reasons.append("commitment_deadline_missed")
+        elif due is not None and active:
+            if signals.commitment_due_uncertain:
+                priority = "medium"
+                reasons.append("commitment_deadline_uncertain")
+            else:
+                priority = "low"
+                reasons.append("commitment_deadline_in_future")
         else:
             priority = "medium"
             reasons.append("commitment_without_reliable_deadline")
@@ -89,6 +102,8 @@ def calculate_priority(signals: PrioritySignals) -> PriorityResult:
             "commitment_due_at": signals.commitment_due_at.isoformat()
             if signals.commitment_due_at
             else None,
+            "commitment_status": signals.commitment_status,
+            "commitment_due_uncertain": signals.commitment_due_uncertain,
             "explicit_risk": signals.explicit_risk,
             "limitations": limitations,
             "evaluated_at": _utc(signals.as_of).isoformat(),

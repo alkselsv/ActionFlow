@@ -31,6 +31,7 @@ def validate_result(
     *,
     allowed_anchor_sides: tuple[str, ...] = ("customer", "unknown"),
     expected_subject_kind: str = "message",
+    allow_context_anchor: bool = False,
 ) -> tuple[CandidateValidation, ...]:
     by_message = {message.message_id: message for message in messages}
     validations: list[CandidateValidation] = []
@@ -39,16 +40,19 @@ def validate_result(
         subject = candidate.subject
         if subject.kind != expected_subject_kind:
             errors.append(f"unexpected_subject_kind:{subject.kind}")
+        if result.finding_type == "commitment" and candidate.commitment is None:
+            errors.append("commitment_terms_required")
         anchor = by_message.get(subject.anchor_message_id)
         if anchor is None:
             errors.append(f"anchor_not_in_input:{subject.anchor_message_id}")
         else:
             if subject.anchor_revision_id != anchor.revision_id:
                 errors.append("anchor_revision_mismatch")
-            if anchor.role != "window":
+            expected_role = ("window", "context") if allow_context_anchor else ("window",)
+            if anchor.role not in expected_role:
                 errors.append("anchor_outside_window")
             if anchor.side not in allowed_anchor_sides:
-                errors.append(f"anchor_side_not_customer:{anchor.side}")
+                errors.append(f"anchor_side_not_allowed:{anchor.side}")
 
         anchors = [item for item in candidate.evidence if item.role == "anchor"]
         if len(anchors) != 1:

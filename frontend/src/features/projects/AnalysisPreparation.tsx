@@ -41,7 +41,12 @@ const statusLabels = {
 };
 const stageLabels: Record<string, string> = {
   dispatch: "доставка команды", prepare: "подготовка входа", detector: "поиск обращений",
-  unanswered_ready: "обращения без ответа", finalize: "завершение",
+  unanswered_ready: "обращения без ответа", commitment_ready: "обязательства",
+  findings_ready: "находки готовы", finalize: "завершение",
+};
+const findingTypeLabels: Record<string, string> = {
+  unanswered: "Обращение без ответа",
+  commitment: "Обязательство Vedita",
 };
 const errors: Record<string, string> = {
   analysis_input_too_large: "В срезе больше 50 000 сообщений. Сократите период.",
@@ -183,7 +188,7 @@ export function AnalysisPreparation({ projectId, onExpired, onCompleted }: {
   const stage = run ? stageLabels[run.stage] : null;
   return <section className="panel settings">
     <h2>Запуск анализа</h2>
-    <p>Кнопка запускает детектор обращений без ответа на зафиксированном входе. Сейчас используется локальная воспроизводимая модель; внешние LLM и платные вызовы не выполняются. В этом запуске реализован только тип <code>unanswered</code>.</p>
+    <p>Кнопка запускает локальные детекторы обращений без ответа и обязательств Vedita на зафиксированном входе. Внешние LLM и платные вызовы не выполняются.</p>
     <form onSubmit={submit}>
       <label>Начало периода<input name="period_start" type="datetime-local" required /></label>
       <label>Конец периода, не включительно<input name="period_end" type="datetime-local" required /></label>
@@ -213,14 +218,14 @@ export function AnalysisPreparation({ projectId, onExpired, onCompleted }: {
       </>}
       {run.status === "succeeded" && <>
         <h3>Результат запуска</h3>
-        <p>Реализован только тип <code>unanswered</code>. Кандидатов: {run.candidate_count ?? 0}; карточек: {run.finding_count ?? 0}; отклонено проверкой оснований: {run.invalid_candidate_count ?? 0}.</p>
+        <p>Доступны типы: {run.implemented_types.map((item) => findingTypeLabels[item] ?? item).join(", ")}. Кандидатов: {run.candidate_count ?? 0}; карточек: {run.finding_count ?? 0}; отклонено проверкой оснований: {run.invalid_candidate_count ?? 0}.</p>
         {!run.apply_to_queue && <p>Это сравнительный запуск: кандидаты сохранены, но карточки очереди не обновлялись.</p>}
         {run.detector && <p>Модель: {run.detector.model_id ?? "не указана"} · prompt {run.detector.prompt_version ?? "—"} · схема {run.detector.schema_version ?? "—"} · длительность {run.detector.duration_ms ?? "—"} мс · стоимость {run.cost_usd === null ? "неизвестна" : run.cost_usd}.</p>}
-        {findings.length === 0 && <p>Обращений без содержательного ответа не найдено.</p>}
+        {findings.length === 0 && <p>Находок выбранных типов не найдено.</p>}
         {findings.length > 0 && <div className="findings-layout">
           <ul className="finding-list">{findings.map((finding) => <li key={finding.id}>
             <button className={"project" + (card?.id === finding.id ? " selected" : "")} onClick={() => void selectFinding(finding.id)}>
-              <strong>Обращение без ответа</strong>
+              <strong>{findingTypeLabels[finding.type] ?? finding.type}</strong>
               <span>{finding.description}</span>
               <span>Приоритет: {finding.priority === "unknown" ? "не рассчитан" : finding.priority} · версия {finding.version}</span>
             </button>

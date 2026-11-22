@@ -408,5 +408,9 @@ def finalize_run(sessions, run_id: str) -> None:
         if run is None or run.status in TERMINAL:
             return
         run.status = "succeeded"
-        run.stage = "unanswered_ready"
+        run.stage = (
+            "findings_ready"
+            if run.stage == "commitment_ready"
+            else "unanswered_ready"
+        )
         run.finished_at = utc_now()

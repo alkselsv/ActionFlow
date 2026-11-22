@@ -51,6 +51,9 @@ dd { margin: 0 0 .6rem; }
 .finding-list .project.selected { outline: 2px solid #14675d; }
 .finding-detail { border: 1px solid #cbd9d5; border-radius: .5rem; padding: 1rem; background: #f8fbfa; }
 .finding-detail h3, .finding-detail h4 { margin-bottom: .5rem; }
+.commitment-block { margin: 1rem 0; padding: .75rem; border-left: 3px solid #14675d; background: #eef6f3; }
+.commitment-events { margin: .5rem 0 0; padding-left: 1.2rem; }
+.commitment-events li { margin-bottom: .35rem; }
 .evidence-list, .surrounding { padding-left: 1.2rem; }
 .evidence-list li, .surrounding li { margin-bottom: .8rem; }
 .evidence-list li.anchor, .surrounding li.anchor { background: #fff7dd; border-left: 3px solid #c49a2c; padding: .5rem .7rem; }

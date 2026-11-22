@@ -72,6 +72,20 @@ class Subject(BaseModel):
     discriminator: str | None = Field(default=None, max_length=200)
 
 
+class CommitmentTerms(BaseModel):
+    """Structured commitment facts detected in one promise or update."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    event: Literal["promise", "repeat", "reschedule", "cancel", "fulfill"] = (
+        "promise"
+    )
+    subject_text: str | None = Field(default=None, max_length=2000)
+    due_expression: str | None = Field(default=None, max_length=500)
+    assignee_name: str | None = Field(default=None, max_length=200)
+    explicit_risk: bool = False
+
+
 class Candidate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -82,6 +96,7 @@ class Candidate(BaseModel):
     priority_hint: Literal["low", "medium", "high", "unknown"] = "unknown"
     suggested_action: Literal["reply", "review", "follow_up", "none"] = "review"
     evidence: list[Evidence] = Field(min_length=1, max_length=20)
+    commitment: CommitmentTerms | None = None
     limitations: list[
         Literal[
             "first_reaction_without_resolution",
@@ -92,6 +107,8 @@ class Candidate(BaseModel):
             "missing_text",
             "history_incomplete",
             "system_events",
+            "ambiguous_due",
+            "ambiguous_update",
         ]
     ] = Field(default_factory=list, max_length=20)
 

@@ -10,6 +10,8 @@ from actionflow.persistence.database import as_utc
 from actionflow.persistence.findings import (
     Candidate,
     CandidateEvidence,
+    Commitment,
+    CommitmentEvent,
     Finding,
     FindingObservation,
 )
@@ -128,6 +130,11 @@ def _candidate_view(db, candidate):
         "priority_hint": candidate.priority_hint,
         "suggested_action": candidate.suggested_action,
         "limitations": candidate.limitations,
+        "commitment": (
+            candidate.raw_payload.get("commitment")
+            if isinstance(candidate.raw_payload, dict)
+            else None
+        ),
         "subject": {
             "kind": candidate.subject_kind,
             "anchor_message_id": candidate.anchor_message_id,
@@ -138,16 +145,38 @@ def _candidate_view(db, candidate):
 
 
 def _summary(finding, run=None, observation=None):
-    priority = (observation.priority if observation else None) or finding.priority
+    has_snapshot = observation is not None and (
+        observation.sla_state is not None
+        or observation.priority is not None
+        or observation.commitment_status is not None
+    )
+    priority = (
+        observation.priority
+        if observation is not None and observation.priority is not None
+        else finding.priority
+    )
     priority_reason = (
         observation.priority_reason if observation else None
     ) or finding.priority_reason
-    due_at = (observation.sla_due_at if observation else None) or finding.sla_due_at
-    sla_state = (observation.sla_state if observation else None) or finding.sla_state
+    due_at = (
+        observation.sla_due_at if has_snapshot else finding.sla_due_at
+    )
+    sla_state = (
+        observation.sla_state if has_snapshot else finding.sla_state
+    )
     sla_reason = (observation.sla_reason if observation else None) or finding.sla_reason
     first_response_at = (
-        (observation.first_response_at if observation else None)
-        or finding.first_response_at
+        observation.first_response_at if has_snapshot else finding.first_response_at
+    )
+    commitment_due_at = (
+        observation.commitment_due_at
+        if observation is not None and observation.commitment_status is not None
+        else finding.commitment_due_at
+    )
+    commitment_status = (
+        observation.commitment_status
+        if observation is not None and observation.commitment_status is not None
+        else finding.commitment_status
     )
     settings_version_id = (
         (observation.settings_version_id if observation else None)
@@ -170,6 +199,14 @@ def _summary(finding, run=None, observation=None):
             "settings_version_id": settings_version_id,
         },
         "limitations": (sla_reason or {}).get("limitations", []),
+        "commitment": (
+            {
+                "due_at": as_utc(commitment_due_at),
+                "status": commitment_status,
+            }
+            if finding.finding_type == "commitment"
+            else None
+        ),
         "anchor_message_id": finding.anchor_message_id,
         "current_run_id": finding.current_run_id,
         "run_id": run.id if run is not None else None,
@@ -201,6 +238,10 @@ def _history(db, finding_id):
                 "first_response_at": as_utc(observation.first_response_at),
                 "reason": observation.sla_reason,
                 "settings_version_id": observation.settings_version_id,
+            },
+            "commitment": {
+                "due_at": as_utc(observation.commitment_due_at),
+                "status": observation.commitment_status,
             },
         }
         for observation, run in rows
@@ -237,6 +278,50 @@ def _finding(db, finding_id, run_id=None):
     )
     candidate = db.get(Candidate, candidate_id) if candidate_id else None
     candidate_data = _candidate_view(db, candidate)
+    commitment = None
+    if finding.finding_type == "commitment":
+        commitment = db.get(Commitment, finding.subject_id)
+    commitment_data = None
+    if commitment is not None:
+        events_query = select(CommitmentEvent).where(
+            CommitmentEvent.commitment_id == commitment.id
+        )
+        if selected_run_id and run is not None:
+            events_query = events_query.where(
+                CommitmentEvent.at <= as_utc(run.as_of)
+            )
+        events = db.scalars(
+            events_query.order_by(CommitmentEvent.at, CommitmentEvent.id)
+        )
+        commitment_data = {
+            "id": commitment.id,
+            "subject_text": commitment.subject_text,
+            "assignee_name": commitment.assignee_name,
+            "status": (
+                observation.commitment_status
+                if observation is not None
+                and observation.commitment_status is not None
+                else commitment.status
+            ),
+            "due_at": as_utc(
+                observation.commitment_due_at
+                if observation is not None
+                and observation.commitment_status is not None
+                else commitment.due_at
+            ),
+            "events": [
+                {
+                    "kind": event.kind,
+                    "at": as_utc(event.at),
+                    "due_at": as_utc(event.due_at),
+                    "previous_due_at": as_utc(event.previous_due_at),
+                    "uncertain": event.uncertain,
+                    "message_id": event.message_id,
+                    "revision_id": event.revision_id,
+                }
+                for event in events
+            ],
+        }
     first_reaction_at = None
     if candidate is not None:
         supporting = db.scalar(
@@ -270,6 +355,7 @@ def _finding(db, finding_id, run_id=None):
         },
         "limitations": (candidate.limitations if candidate else []),
         "candidate": candidate_data,
+        "commitment": commitment_data,
         "evidence": candidate_data["evidence"] if candidate_data else [],
         "surrounding": _context(db, selected_run_id, finding.anchor_message_id)
         if selected_run_id
@@ -288,9 +374,13 @@ def _finding(db, finding_id, run_id=None):
         if run
         else None,
         "first_response_at": (
-            observation.first_response_at
-            if observation is not None and observation.first_response_at
-            else first_reaction_at
+            None
+            if finding.finding_type == "commitment"
+            else (
+                observation.first_response_at
+                if observation is not None and observation.first_response_at
+                else first_reaction_at
+            )
         ),
     }
 
