@@ -38,10 +38,29 @@ export type Participant = {
   imported: boolean;
   side: Side;
 };
+export type CommitmentEvent = {
+  kind: string;
+  at: string;
+  due_at: string | null;
+  previous_due_at: string | null;
+  uncertain: boolean;
+  message_id: string | null;
+  revision_id: string | null;
+};
+
+export type CommitmentInfo = {
+  id?: string;
+  subject_text?: string;
+  assignee_name?: string | null;
+  due_at: string | null;
+  status: string | null;
+  events?: CommitmentEvent[];
+};
+
 export type FindingSummary = {
   id: string;
   project_id: string;
-  type: "unanswered";
+  type: "unanswered" | "commitment";
   status: "new" | "confirmed" | "rejected" | "snoozed" | "closed";
   priority: "low" | "medium" | "high" | "unknown";
   priority_reason: Record<string, unknown>;
@@ -55,6 +74,7 @@ export type FindingSummary = {
     settings_version_id: string | null;
   };
   limitations: string[];
+  commitment: CommitmentInfo | null;
   anchor_message_id: string;
   current_run_id: string | null;
   run_id: string | null;
@@ -96,6 +116,13 @@ export type FindingCard = FindingSummary & {
     priority_hint: string;
     suggested_action: string;
     limitations: string[];
+    commitment?: {
+      event: string;
+      subject_text: string | null;
+      due_expression: string | null;
+      assignee_name: string | null;
+      explicit_risk: boolean;
+    } | null;
     subject: {
       kind: string;
       anchor_message_id: string;
@@ -113,6 +140,7 @@ export type FindingCard = FindingSummary & {
     summary: string;
     priority: "low" | "medium" | "high" | "unknown" | null;
     priority_reason: Record<string, unknown> | null;
+    commitment: CommitmentInfo | null;
     sla: {
       due_at: string | null;
       state: string | null;

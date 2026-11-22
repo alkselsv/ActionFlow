@@ -17,10 +17,22 @@ type Filters = {
 };
 
 const initialFilters: Filters = {
-  type: "unanswered",
+  type: "",
   status: "",
   priority: "",
   sla: "",
+};
+
+const typeLabels: Record<string, string> = {
+  unanswered: "Обращение без ответа",
+  commitment: "Обязательство Vedita",
+};
+
+const commitmentStatusLabels: Record<string, string> = {
+  open: "открыто",
+  fulfilled: "исполнено",
+  cancelled: "отменено",
+  uncertain: "требует проверки",
 };
 
 const slaLabels: Record<string, string> = {
@@ -44,7 +56,10 @@ const priorityLabels: Record<string, string> = {
   uncertain_or_pending_sla: "SLA ожидает или расчёт ограничен",
   open_request_waiting_for_response: "обращение ждёт ответа",
   commitment_deadline_missed: "пропущен срок обязательства",
+  commitment_deadline_missed_uncertain: "срок обязательства, возможно, пропущен",
   commitment_deadline_in_future: "срок обязательства в будущем",
+  commitment_deadline_uncertain: "срок обязательства требует уточнения",
+  commitment_completed: "обязательство завершено",
   commitment_without_reliable_deadline: "нет надёжного срока",
   complaint_requires_manager_review: "претензия требует проверки",
   data_limitations_require_manual_review: "недостаточно данных",
@@ -59,6 +74,8 @@ const limitationLabels: Record<string, string> = {
   missing_text: "нет текста",
   history_incomplete: "история неполна",
   system_events: "есть системные события",
+  ambiguous_due: "срок неоднозначен",
+  ambiguous_update: "связь изменения неоднозначна",
 };
 
 function explanation(value: Record<string, unknown> | null | undefined) {
@@ -142,8 +159,9 @@ export function FindingsQueue({
     <p>Сохранённые карточки проекта. Расчёт приоритета и SLA относится к версии условий выбранного запуска.</p>
     <div className="filters">
       <label>Тип<select value={filters.type} onChange={(event) => setFilter("type", event.target.value)}>
-        <option value="unanswered">Обращения без ответа</option>
         <option value="">Все доступные</option>
+        <option value="unanswered">Обращения без ответа</option>
+        <option value="commitment">Обязательства Vedita</option>
       </select></label>
       <label>Статус<select value={filters.status} onChange={(event) => setFilter("status", event.target.value)}>
         <option value="">Все</option><option value="new">Новые</option><option value="confirmed">Подтверждённые</option>
@@ -166,9 +184,10 @@ export function FindingsQueue({
     {items.length > 0 && <div className="findings-layout queue-layout">
       <ul className="finding-list">{items.map((item) => <li key={item.id}>
         <button className={"project" + (card?.id === item.id ? " selected" : "")} onClick={() => void openCard(item.id)}>
-          <strong>Обращение без ответа</strong>
+          <strong>{typeLabels[item.type] ?? item.type}</strong>
           <span>{item.description}</span>
-          <span>Приоритет: {priorityValueLabels[item.priority] ?? item.priority} · SLA: {slaLabels[item.sla.state] ?? item.sla.state} · версия {item.version}</span>
+          <span>Приоритет: {priorityValueLabels[item.priority] ?? item.priority} · {item.type === "commitment" ? `обязательство: ${item.commitment?.status ? commitmentStatusLabels[item.commitment.status] ?? item.commitment.status : "неизвестно"}` : `SLA: ${slaLabels[item.sla.state] ?? item.sla.state}`} · версия {item.version}</span>
+          {item.commitment?.due_at && <span>Срок обязательства: {new Date(item.commitment.due_at).toLocaleString()}.</span>}
           {explanation(item.priority_reason) && <span>Почему: {explanation(item.priority_reason)}.</span>}
           {item.sla.due_at && <span>Срок: {new Date(item.sla.due_at).toLocaleString()} · оценка: {item.sla.reason?.evaluated_at ? new Date(String(item.sla.reason.evaluated_at)).toLocaleString() : "не указана"}.</span>}
           {item.as_of && <span>Момент анализа: {new Date(item.as_of).toLocaleString()}.</span>}

@@ -5,6 +5,7 @@ from actionflow.detectors.contracts import Candidate, InputMessage
 from actionflow.domain.priority import PrioritySignals, calculate_priority
 from actionflow.domain.sla import SlaPolicy, evaluate_first_response
 from actionflow.persistence.analysis import AnalysisRun
+from actionflow.persistence.findings import Commitment
 from actionflow.persistence.project_settings import SettingsVersion
 
 
@@ -17,6 +18,8 @@ class RuleResult:
     sla_reason: dict
     first_response_at: datetime | None
     settings_version_id: str | None
+    commitment_due_at: datetime | None = None
+    commitment_status: str | None = None
 
 
 def policy_from_settings(settings: SettingsVersion | None) -> SlaPolicy | None:
@@ -77,4 +80,43 @@ def evaluate_unanswered(
         sla_reason=sla.reason,
         first_response_at=sla.first_response_at,
         settings_version_id=settings.id if settings is not None else None,
+    )
+
+
+def evaluate_commitment(
+    run: AnalysisRun,
+    settings: SettingsVersion | None,
+    commitment: Commitment,
+    candidate: Candidate,
+) -> RuleResult:
+    terms = candidate.commitment
+    explicit_risk = bool(
+        (terms.explicit_risk if terms is not None else False)
+        or commitment.explicit_risk
+    )
+    priority = calculate_priority(
+        PrioritySignals(
+            finding_type="commitment",
+            as_of=run.as_of,
+            commitment_due_at=commitment.due_at,
+            commitment_status=commitment.status,
+            commitment_due_uncertain=commitment.due_uncertain,
+            explicit_risk=explicit_risk,
+            limitations=tuple(candidate.limitations),
+        )
+    )
+    return RuleResult(
+        priority=priority.priority,
+        priority_reason=priority.reason,
+        sla_due_at=None,
+        sla_state="not_calculated",
+        sla_reason={
+            "rule_version": "sla.v1",
+            "reason": "not_applicable",
+            "finding_type": "commitment",
+        },
+        first_response_at=None,
+        settings_version_id=settings.id if settings is not None else None,
+        commitment_due_at=commitment.due_at,
+        commitment_status=commitment.status,
     )

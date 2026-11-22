@@ -183,7 +183,7 @@ def test_saved_unanswered_card_evidence_and_idempotent_runs(tmp_path, monkeypatc
         assert run["usage"]["cost_usd"] is None
         assert run["candidate_count"] == 1
         assert run["finding_count"] == 1
-        assert run["implemented_types"] == ["unanswered"]
+        assert run["implemented_types"] == ["unanswered", "commitment"]
 
         findings = browser.get(f"/api/v1/analyses/{run_id}/findings").json()["items"]
         assert len(findings) == 1

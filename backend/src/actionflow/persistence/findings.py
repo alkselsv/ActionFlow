@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import (
+    Boolean,
     DateTime,
     Float,
     ForeignKey,
@@ -67,6 +68,67 @@ class CandidateEvidence(Base):
     quote_hash: Mapped[str | None] = mapped_column(String(64))
 
 
+class Commitment(Base):
+    """A durable Vedita promise with its own independently tracked state."""
+
+    __tablename__ = "commitment"
+    __table_args__ = (
+        UniqueConstraint("project_id", "anchor_message_id"),
+        Index("ix_commitment_project_status", "project_id", "status"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    project_id: Mapped[str] = mapped_column(ForeignKey("project.id"))
+    anchor_message_id: Mapped[str] = mapped_column(ForeignKey("message.id"))
+    anchor_revision_id: Mapped[str] = mapped_column(
+        ForeignKey("message_revision.id")
+    )
+    subject_text: Mapped[str] = mapped_column(Text)
+    assignee_name: Mapped[str | None] = mapped_column(String(200))
+    assignee_participant_id: Mapped[str | None] = mapped_column(
+        ForeignKey("participant.id")
+    )
+    status: Mapped[str] = mapped_column(String(20), default="open")
+    due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    due_uncertain: Mapped[bool] = mapped_column(Boolean, default=False)
+    explicit_risk: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now
+    )
+
+
+class CommitmentEvent(Base):
+    """Immutable evidence for a promise, repeat, reschedule, cancellation or fulfillment."""
+
+    __tablename__ = "commitment_event"
+    __table_args__ = (
+        UniqueConstraint(
+            "commitment_id", "kind", "message_id", "revision_id"
+        ),
+        Index("ix_commitment_event_commitment_at", "commitment_id", "at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    commitment_id: Mapped[str] = mapped_column(ForeignKey("commitment.id"))
+    kind: Mapped[str] = mapped_column(String(20))
+    message_id: Mapped[str | None] = mapped_column(ForeignKey("message.id"))
+    revision_id: Mapped[str | None] = mapped_column(
+        ForeignKey("message_revision.id")
+    )
+    due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    previous_due_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    uncertain: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now
+    )
+
+
 class Finding(Base):
     """A durable manager-facing card. Its identity is the observed subject."""
 
@@ -83,6 +145,12 @@ class Finding(Base):
             "updated_at",
         ),
         Index("ix_finding_sla", "project_id", "sla_state", "priority"),
+        Index(
+            "ix_finding_commitment",
+            "project_id",
+            "finding_type",
+            "commitment_status",
+        ),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
@@ -106,6 +174,10 @@ class Finding(Base):
     first_response_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True)
     )
+    commitment_due_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    commitment_status: Mapped[str | None] = mapped_column(String(20))
     latest_candidate_id: Mapped[str | None] = mapped_column(
         ForeignKey("candidate.id")
     )
@@ -146,6 +218,10 @@ class FindingObservation(Base):
     first_response_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True)
     )
+    commitment_due_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    commitment_status: Mapped[str | None] = mapped_column(String(20))
     settings_version_id: Mapped[str | None] = mapped_column(
         ForeignKey(
             "settings_version.id", name="fk_finding_observation_settings_version"

@@ -161,6 +161,27 @@ def test_priority_rules_cover_all_three_contracts():
     )
     assert overdue.priority == "high"
 
+    uncertain_due = calculate_priority(
+        PrioritySignals(
+            finding_type="commitment",
+            as_of=as_of,
+            commitment_due_at=datetime(2026, 9, 15, 9, 0, tzinfo=UTC),
+            commitment_status="open",
+            commitment_due_uncertain=True,
+        )
+    )
+    assert uncertain_due.priority == "medium"
+    assert "commitment_deadline_missed_uncertain" in uncertain_due.reason["reasons"]
+
+    completed = calculate_priority(
+        PrioritySignals(
+            finding_type="commitment",
+            as_of=as_of,
+            commitment_status="fulfilled",
+        )
+    )
+    assert completed.priority == "low"
+
     no_deadline = calculate_priority(
         PrioritySignals(
             finding_type="commitment", as_of=as_of, commitment_status="open"
@@ -241,7 +262,7 @@ def test_priority_consumes_all_three_agreed_detector_contracts():
         for result in results
     ]
 
-    assert [item.priority for item in evaluations] == ["medium", "medium", "high"]
+    assert [item.priority for item in evaluations] == ["medium", "high", "high"]
     assert all(
         "data_limitations_require_manual_review" in item.reason["reasons"]
         for item in evaluations
