@@ -261,7 +261,7 @@ def analyze_unanswered(
         )
         if run is None:
             raise ValueError("Unknown analysis run")
-        if run.status in TERMINAL:
+        if run.status in TERMINAL or "unanswered" in (run.limitations or {}):
             return UnansweredSummary(
                 candidate_count=run.candidate_count or 0,
                 finding_count=run.finding_count or 0,
@@ -290,7 +290,7 @@ def analyze_unanswered(
         )
         if run is None:
             raise ValueError("Unknown analysis run")
-        if run.status in TERMINAL:
+        if run.status in TERMINAL or "unanswered" in (run.limitations or {}):
             return UnansweredSummary(
                 candidate_count=run.candidate_count or 0,
                 finding_count=run.finding_count or 0,
@@ -403,6 +403,9 @@ def analyze_unanswered(
             "rejected_candidates": rejected,
         }
         run.limitations = old_limitations
+        record_detector_result(
+            run, detector, result, duration_ms, old_limitations["unanswered"]
+        )
 
     return UnansweredSummary(
         candidate_count=len(result.candidates),
@@ -429,3 +432,4 @@ def finalize_run(sessions, run_id: str) -> None:
             else "unanswered_ready"
         )
         run.finished_at = utc_now()
+from actionflow.application.run_results import record_detector_result

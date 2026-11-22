@@ -435,7 +435,7 @@ def analyze_commitments(
         )
         if run is None:
             raise ValueError("Unknown analysis run")
-        if run.status in TERMINAL:
+        if run.status in TERMINAL or "commitment" in (run.limitations or {}):
             return CommitmentSummary(
                 candidate_count=run.candidate_count or 0,
                 finding_count=run.finding_count or 0,
@@ -475,7 +475,7 @@ def analyze_commitments(
         )
         if run is None:
             raise ValueError("Unknown analysis run")
-        if run.status in TERMINAL:
+        if run.status in TERMINAL or "commitment" in (run.limitations or {}):
             return CommitmentSummary(
                 candidate_count=run.candidate_count or 0,
                 finding_count=run.finding_count or 0,
@@ -602,6 +602,9 @@ def analyze_commitments(
             "rejected_candidates": rejected,
         }
         run.limitations = old_limitations
+        record_detector_result(
+            run, detector, result, duration_ms, old_limitations["commitment"]
+        )
 
     return CommitmentSummary(
         candidate_count=len(result.candidates),
@@ -612,3 +615,4 @@ def analyze_commitments(
         duration_ms=duration_ms,
         usage=result.usage,
     )
+from actionflow.application.run_results import record_detector_result

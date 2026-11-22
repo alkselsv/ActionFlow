@@ -8,6 +8,8 @@ from sqlalchemy import select
 from actionflow.api.project_settings import require_project
 from actionflow.api.telegram_import import revision_result
 from actionflow.application.analysis_input import InputTooLarge, check_limit
+from actionflow.application.run_comparison import compare_runs, same_slice
+from actionflow.application.run_results import FINDING_TYPES, detector_results
 from actionflow.persistence.analysis import (
     AnalysisInputMessage,
     AnalysisRun,
@@ -71,7 +73,8 @@ def run_result(run):
             "parameters": run.model_params,
             "duration_ms": run.detector_duration_ms,
         },
-        "implemented_types": ["unanswered", "commitment", "complaint"],
+        "implemented_types": list(FINDING_TYPES),
+        "detectors": detector_results(run),
         "candidate_count": run.candidate_count,
         "invalid_candidate_count": run.invalid_candidate_count,
         "finding_count": run.finding_count,
@@ -210,6 +213,23 @@ def register_analysis_routes(projects, router, Db, session_required, origin_requ
     @router.get("/analyses/{run_id}", dependencies=[session_required])
     def analysis_status(run_id: str, db=Db):
         return run_result(require_run(db, run_id))
+
+    @router.get("/analyses/{run_id}/comparison", dependencies=[session_required])
+    def analysis_comparison(run_id: str, other: str, db=Db):
+        first, second = require_run(db, run_id), require_run(db, other)
+        if first.project_id != second.project_id:
+            raise HTTPException(404, "Запуск не найден")
+        if any(run.status not in {"succeeded", "failed"} for run in (first, second)):
+            raise HTTPException(
+                409, "Сравнение доступно после завершения обоих запусков"
+            )
+        if not same_slice(db, first, second):
+            raise HTTPException(409, "Для сравнения выберите одинаковый входной срез")
+        return {
+            "before": run_result(first),
+            "after": run_result(second),
+            "changes": compare_runs(db, first, second),
+        }
 
     @router.get("/analyses/{run_id}/input", dependencies=[session_required])
     def analysis_input(

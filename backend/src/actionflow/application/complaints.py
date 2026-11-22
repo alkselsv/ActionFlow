@@ -60,7 +60,7 @@ def analyze_complaints(
         )
         if run is None:
             raise ValueError("Unknown analysis run")
-        if run.status in TERMINAL:
+        if run.status in TERMINAL or "complaint" in (run.limitations or {}):
             return ComplaintSummary(
                 candidate_count=run.candidate_count or 0,
                 finding_count=run.finding_count or 0,
@@ -101,7 +101,7 @@ def analyze_complaints(
         )
         if run is None:
             raise ValueError("Unknown analysis run")
-        if run.status in TERMINAL:
+        if run.status in TERMINAL or "complaint" in (run.limitations or {}):
             return ComplaintSummary(
                 candidate_count=run.candidate_count or 0,
                 finding_count=run.finding_count or 0,
@@ -219,6 +219,9 @@ def analyze_complaints(
             "rejected_candidates": rejected,
         }
         run.limitations = old_limitations
+        record_detector_result(
+            run, detector, result, duration_ms, old_limitations["complaint"]
+        )
 
     return ComplaintSummary(
         candidate_count=len(result.candidates),
@@ -229,3 +232,4 @@ def analyze_complaints(
         duration_ms=duration_ms,
         usage=result.usage,
     )
+from actionflow.application.run_results import record_detector_result
