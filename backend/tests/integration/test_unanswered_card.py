@@ -446,9 +446,11 @@ def test_full_analysis_preserves_partial_results_and_manager_actions(
                 async def connect():
                     return temporal.client
 
-                async def start(key):
+                async def start(key, **overrides):
                     response = browser.post(
-                        path, json=payload, headers={**ORIGIN, "Idempotency-Key": key}
+                        path,
+                        json={**payload, **overrides},
+                        headers={**ORIGIN, "Idempotency-Key": key},
                     )
                     assert response.status_code == 202
                     result = response.json()
@@ -535,6 +537,8 @@ def test_full_analysis_preserves_partial_results_and_manager_actions(
                 async with analysis_worker(temporal.client, sessions, queue, executor):
                     second, handle = await start("retry")
                     await asyncio.wait_for(handle.result(), 20)
+                    evaluation, handle = await start("evaluation", apply_to_queue=False)
+                    await asyncio.wait_for(handle.result(), 20)
                 response = browser.get(
                     f"/api/v1/analyses/{first}/comparison", params={"other": second}
                 )
@@ -546,7 +550,18 @@ def test_full_analysis_preserves_partial_results_and_manager_actions(
                     item["status"] == "succeeded"
                     for item in comparison["after"]["detectors"].values()
                 )
-                assert comparison["changes"]
+                [change] = comparison["changes"]
+                assert change["type"] == "unanswered"
+                assert (
+                    change["before"][0]["sla_due_at"]
+                    != change["after"][0]["sla_due_at"]
+                )
+                response = browser.get(
+                    f"/api/v1/analyses/{second}/comparison",
+                    params={"other": evaluation},
+                )
+                assert response.status_code == 200
+                assert response.json()["changes"] == []
                 second_findings = browser.get(
                     f"/api/v1/analyses/{second}/findings"
                 ).json()["items"]

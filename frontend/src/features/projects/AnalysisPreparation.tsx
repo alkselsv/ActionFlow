@@ -44,7 +44,7 @@ type ComparedCandidate = {description: string; validity: string; sla_state: stri
   evidence: {role: string; message_id: string; revision_id: string; quote?: string | null}[]};
 type Comparison = {
   before: Run; after: Run;
-  changes: {type: string; subject_id: string; before: ComparedCandidate[]; after: ComparedCandidate[]}[];
+  changes: {type: string; subject_kind: string; subject_id: string; before: ComparedCandidate[]; after: ComparedCandidate[]}[];
 };
 
 const statusLabels = {
@@ -169,7 +169,7 @@ export function AnalysisPreparation({ projectId, onExpired, onCompleted }: {
     try {
       const form = new FormData(event.currentTarget);
       const date = (key: string) => new Date(String(form.get(key))).toISOString();
-      const payload = { period_start: date("period_start"), period_end: date("period_end"), as_of: date("as_of"), apply_to_queue: !form.has("comparison_only") };
+      const payload = { period_start: date("period_start"), period_end: date("period_end"), as_of: date("as_of"), apply_to_queue: true };
       const body = JSON.stringify(payload);
       if (!retry.current || retry.current.body !== body) retry.current = { key: crypto.randomUUID(), body };
       const created = await request<{ run_id: string }>(projectPath, payload, { "Idempotency-Key": retry.current.key });
@@ -233,7 +233,6 @@ export function AnalysisPreparation({ projectId, onExpired, onCompleted }: {
       <label>Начало периода<input name="period_start" type="datetime-local" required /></label>
       <label>Конец периода, не включительно<input name="period_end" type="datetime-local" required /></label>
       <label>Момент оценки<input name="as_of" type="datetime-local" required /></label>
-      <label><input name="comparison_only" type="checkbox" /> Сохранить результат для сравнения без обновления очереди</label>
       <button disabled={busy}>Запустить анализ</button>
     </form>
     {error && <p role="alert">{error} {run && status !== "succeeded" && status !== "failed" &&
@@ -276,12 +275,18 @@ export function AnalysisPreparation({ projectId, onExpired, onCompleted }: {
         {comparison && <section>
           <h4>Различия двух запусков</h4>
           <p>Версии настроек: {comparison.before.settings_version_id ?? "—"} → {comparison.after.settings_version_id ?? "—"}</p>
-          {comparison.changes.length === 0 && <p>Различий в кандидатах и основаниях нет.</p>}
-          {comparison.changes.map((change) => <article key={change.type + change.subject_id}>
+          <ul>{Object.entries(comparison.before.detectors).map(([type, detector]) => <li key={type}>
+            {findingTypeLabels[type] ?? type}: {detectorStatusLabels[detector.status]} → {detectorStatusLabels[comparison.after.detectors[type].status]}
+          </li>)}</ul>
+          {comparison.changes.length === 0 && <p>Среди завершённых в обоих запусках детекторов различий в кандидатах и основаниях нет.</p>}
+          {comparison.changes.map((change) => <article key={`${change.type}:${change.subject_kind}:${change.subject_id}`}>
             <h5>{findingTypeLabels[change.type] ?? change.type}</h5>
-            {[{ label: "Первый запуск", items: change.before }, { label: "Второй запуск", items: change.after }].map(({label, items}) =>
-              <div key={label}><strong>{label}</strong>
-                {items.length === 0 && <p>Кандидатов нет.</p>}
+            {[
+              { label: "Первый запуск", items: change.before, detector: comparison.before.detectors[change.type] },
+              { label: "Второй запуск", items: change.after, detector: comparison.after.detectors[change.type] },
+            ].map(({label, items, detector}) =>
+              <div key={label}><strong>{label} · {detectorStatusLabels[detector.status]}</strong>
+                {items.length === 0 && detector.status === "succeeded" && <p>Кандидатов нет.</p>}
                 {items.map((candidate, index) => <div key={index}>
                   <p>{candidate.description} · {candidate.validity}{candidate.sla_state && ` · SLA ${candidate.sla_state} ${candidate.sla_due_at ?? ""}`}</p>
                   <ul>{candidate.evidence.map((item, position) => <li key={position}>

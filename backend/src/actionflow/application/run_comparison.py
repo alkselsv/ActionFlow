@@ -3,6 +3,7 @@ from json import dumps
 
 from sqlalchemy import select
 
+from actionflow.application.run_results import detector_results
 from actionflow.persistence.analysis import AnalysisInputMessage
 from actionflow.persistence.database import as_utc
 from actionflow.persistence.findings import Candidate, FindingObservation
@@ -40,12 +41,12 @@ def same_slice(db, first, second):
     )
 
 
-def candidate_groups(db, run):
+def candidate_groups(db, run, kinds, include_observations):
     groups = defaultdict(list)
     rows = db.execute(
         select(Candidate, FindingObservation)
         .outerjoin(FindingObservation, FindingObservation.candidate_id == Candidate.id)
-        .where(Candidate.run_id == run.id)
+        .where(Candidate.run_id == run.id, Candidate.finding_type.in_(kinds))
         .order_by(Candidate.candidate_key)
     )
     for candidate, observation in rows:
@@ -69,10 +70,12 @@ def candidate_groups(db, run):
                         item.get("quote") or "",
                     ),
                 ),
-                "sla_state": observation.sla_state if observation else None,
+                "sla_state": observation.sla_state
+                if include_observations and observation
+                else None,
                 "sla_due_at": (
                     as_utc(observation.sla_due_at).isoformat()
-                    if observation and observation.sla_due_at
+                    if include_observations and observation and observation.sla_due_at
                     else None
                 ),
                 "commitment": candidate.raw_payload.get("commitment"),
@@ -85,8 +88,17 @@ def candidate_groups(db, run):
 
 
 def compare_runs(db, first, second):
-    before = candidate_groups(db, first)
-    after = candidate_groups(db, second)
+    first_results, second_results = detector_results(first), detector_results(second)
+    kinds = [
+        kind
+        for kind in first_results
+        if first_results[kind]["status"]
+        == second_results[kind]["status"]
+        == "succeeded"
+    ]
+    include_observations = first.apply_to_queue and second.apply_to_queue
+    before = candidate_groups(db, first, kinds, include_observations)
+    after = candidate_groups(db, second, kinds, include_observations)
     changes = []
     for key in sorted(before.keys() | after.keys()):
         left, right = before.get(key, []), after.get(key, [])

@@ -210,9 +210,14 @@ def score_slice(sessions, run_id, external_ids, expected):
             used = {
                 ids[item["message_id"]] for item in candidate.raw_payload["evidence"]
             }
-            metrics["evidence_correct"] += int(
-                used <= set(acceptable) and key[1] in used
-            )
+            required = {key[1]}
+            if sla and sla[-1] is not None:
+                required.add(acceptable[1])
+            if (key == ("commitment", 4) and acceptable == (4, 6)) or (
+                key == ("complaint", 1) and acceptable == (1, 3)
+            ):
+                required.update(acceptable)
+            metrics["evidence_correct"] += int(required <= used <= set(acceptable))
             if sla:
                 metrics["sla_checked"] += 1
                 state, due, first_response = sla
@@ -229,7 +234,7 @@ def score_slice(sessions, run_id, external_ids, expected):
             totals[kind]["fn"] += 1
         results = detector_results(run)
         limitations = dict(run.limitations or {})
-        for key in (*FINDING_TYPES, "detectors"):
+        for key in FINDING_TYPES:
             limitations.pop(key, None)
         return totals, {
             "duration_seconds": (

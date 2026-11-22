@@ -4,8 +4,8 @@ FINDING_TYPES = ("unanswered", "commitment", "complaint")
 
 
 def record_detector_result(run, detector, result, duration_ms, summary):
-    results = dict((run.limitations or {}).get("detectors", {}))
-    results[result.finding_type] = {
+    limitations = dict(run.limitations or {})
+    limitations[result.finding_type] = {
         **summary,
         "provider": detector.provider,
         "model": detector.model_id,
@@ -17,28 +17,31 @@ def record_detector_result(run, detector, result, duration_ms, summary):
         "usage": result.usage.model_dump(mode="json"),
         "diagnostics": result.diagnostics,
     }
-    run.limitations = {**(run.limitations or {}), "detectors": results}
-    costs = [item["usage"]["cost_usd"] for item in results.values()]
+    run.limitations = limitations
+    results = [limitations[kind] for kind in FINDING_TYPES if kind in limitations]
+    costs = [(item.get("usage") or {}).get("cost_usd") for item in results]
     run.cost_usd = (
         sum((Decimal(value) for value in costs), Decimal(0))
         if all(value is not None for value in costs)
         else None
     )
-    run.detector_duration_ms = sum(item["duration_ms"] for item in results.values())
-    run.candidate_count = sum(item["candidate_count"] for item in results.values())
+    durations = [item.get("duration_ms") for item in results]
+    run.detector_duration_ms = (
+        sum(durations) if all(value is not None for value in durations) else None
+    )
+    run.candidate_count = sum(item["candidate_count"] for item in results)
     run.invalid_candidate_count = sum(
-        item["invalid_candidate_count"] for item in results.values()
+        item["invalid_candidate_count"] for item in results
     )
 
 
 def detector_results(run):
     limitations = run.limitations or {}
-    saved = limitations.get("detectors", {})
-    completed = {kind for kind in FINDING_TYPES if kind in saved or kind in limitations}
+    completed = {kind for kind in FINDING_TYPES if kind in limitations}
     failed = next((kind for kind in FINDING_TYPES if kind not in completed), None)
     return {
         kind: {
-            **(saved.get(kind) or limitations.get(kind) or {}),
+            **(limitations.get(kind) or {}),
             "status": (
                 "succeeded"
                 if kind in completed
