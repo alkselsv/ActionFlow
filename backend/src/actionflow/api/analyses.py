@@ -71,7 +71,7 @@ def run_result(run):
             "parameters": run.model_params,
             "duration_ms": run.detector_duration_ms,
         },
-        "implemented_types": ["unanswered", "commitment"],
+        "implemented_types": ["unanswered", "commitment", "complaint"],
         "candidate_count": run.candidate_count,
         "invalid_candidate_count": run.invalid_candidate_count,
         "finding_count": run.finding_count,

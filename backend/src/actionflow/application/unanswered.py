@@ -410,7 +410,7 @@ def finalize_run(sessions, run_id: str) -> None:
         run.status = "succeeded"
         run.stage = (
             "findings_ready"
-            if run.stage == "commitment_ready"
+            if run.stage in ("commitment_ready", "complaints_ready")
             else "unanswered_ready"
         )
         run.finished_at = utc_now()

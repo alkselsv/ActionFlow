@@ -46,7 +46,7 @@ def setup_project(
         "/api/v1/projects",
         json={
             "client_name": "Synthetic client",
-            "project_name": "Commitment project",
+            "project_name": f"Commitment project {fixture}",
             "manager_name": "Manager",
         },
         headers=ORIGIN,
@@ -109,6 +109,8 @@ def run_pipeline(
     activities.detect(run_id)
     activities.detect_commitment(run_id)
     activities.detect_commitment(run_id)
+    activities.detect_complaint(run_id)
+    activities.detect_complaint(run_id)
     activities.finalize(run_id)
     return run_id
 
@@ -116,6 +118,14 @@ def run_pipeline(
 def commitment_cards(browser, project_id):
     response = browser.get(
         f"/api/v1/projects/{project_id}/findings?type=commitment"
+    )
+    assert response.status_code == 200
+    return response.json()["items"]
+
+
+def complaint_cards(browser, project_id):
+    response = browser.get(
+        f"/api/v1/projects/{project_id}/findings?type=complaint"
     )
     assert response.status_code == 200
     return response.json()["items"]
@@ -142,7 +152,11 @@ def test_commitment_history_survives_repeated_analysis_and_window_change(
         run = browser.get(f"/api/v1/analyses/{first}").json()
         assert run["status"] == "succeeded"
         assert run["stage"] == "findings_ready"
-        assert run["implemented_types"] == ["unanswered", "commitment"]
+        assert run["implemented_types"] == [
+            "unanswered",
+            "commitment",
+            "complaint",
+        ]
         cards = commitment_cards(browser, project_id)
         assert len(cards) == 1
         first_card = browser.get(f"/api/v1/findings/{cards[0]['id']}").json()
@@ -250,6 +264,25 @@ def test_repeat_updates_one_commitment_without_creating_a_duplicate(tmp_path, mo
         assert card["commitment"]["due_at"].startswith("2026-09-15T15:00:00")
         assert card["priority"] == "low"
         assert card["status"] == "new"
+
+        complaints = complaint_cards(browser, project_id)
+        assert len(complaints) == 1
+        complaint = browser.get(f"/api/v1/findings/{complaints[0]['id']}").json()
+        assert complaint["type"] == "complaint"
+        assert complaint["priority"] == "medium"
+        assert complaint["status"] == "new"
+        assert complaint["recommendation"] == "review"
+        assert [item["role"] for item in complaint["evidence"]] == [
+            "anchor",
+            "supporting",
+            "supporting",
+        ]
+        assert complaint["limitations"] == []
+        assert complaint["subject"]["kind"] == "complaint_episode"
+        queued = browser.get(
+            f"/api/v1/projects/{project_id}/findings?type=complaint"
+        ).json()["items"]
+        assert [item["id"] for item in queued] == [complaints[0]["id"]]
 
 
 def test_promise_reschedule_and_fulfillment_are_kept_in_one_history(
@@ -367,3 +400,53 @@ def test_promise_reschedule_and_fulfillment_are_kept_in_one_history(
         )
         assert card["status"] == "new"
         assert run_id
+
+
+def test_escalating_complaint_is_high_and_neutral_observation_is_ignored(
+    tmp_path, monkeypatch
+):
+    settings, sessions = setup_db(tmp_path, monkeypatch)
+    with TestClient(create_app(settings)) as browser:
+        project_id, settings_id = setup_project(browser, "north-conv-n-007.json")
+        with sessions.begin() as db:
+            version = db.get(SettingsVersion, settings_id)
+            assert version is not None
+            version.created_at = datetime(2026, 9, 14, 12, 0, tzinfo=UTC)
+        run_id = run_pipeline(
+            browser,
+            sessions,
+            project_id,
+            key="complaint-risk",
+            as_of="2026-09-15T08:35:00Z",
+            period_start="2026-09-15T00:00:00Z",
+        )
+        run = browser.get(f"/api/v1/analyses/{run_id}").json()
+        assert run["stage"] == "findings_ready"
+        complaints = complaint_cards(browser, project_id)
+        assert len(complaints) == 1
+        complaint = browser.get(f"/api/v1/findings/{complaints[0]['id']}").json()
+        assert complaint["priority"] == "high"
+        assert "explicit_contract_or_operational_risk" in complaint[
+            "priority_reason"
+        ]["reasons"]
+        assert [item["role"] for item in complaint["evidence"]] == [
+            "anchor",
+            "supporting",
+        ]
+
+        neutral_project, neutral_settings_id = setup_project(
+            browser, "north-conv-n-008.json"
+        )
+        with sessions.begin() as db:
+            version = db.get(SettingsVersion, neutral_settings_id)
+            assert version is not None
+            version.created_at = datetime(2026, 9, 14, 12, 0, tzinfo=UTC)
+        run_pipeline(
+            browser,
+            sessions,
+            neutral_project,
+            key="complaint-neutral",
+            as_of="2026-09-15T08:00:00Z",
+            period_start="2026-09-15T00:00:00Z",
+        )
+        assert complaint_cards(browser, neutral_project) == []

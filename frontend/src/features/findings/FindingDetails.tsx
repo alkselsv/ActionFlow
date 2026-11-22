@@ -54,6 +54,7 @@ const priorityValueLabels: Record<string, string> = {
 const typeLabels: Record<string, string> = {
   unanswered: "Обращение без ответа",
   commitment: "Обязательство Vedita",
+  complaint: "Претензия клиента",
 };
 
 const commitmentStatusLabels: Record<string, string> = {
@@ -96,10 +97,10 @@ export function FindingDetails({ card }: { card: FindingCard }) {
       <dt>Рекомендация</dt><dd>{actionLabels[card.recommendation] ?? card.recommendation}</dd>
       <dt>Приоритет</dt><dd>{priorityValueLabels[card.priority] ?? card.priority}</dd>
       <dt>Почему приоритет</dt><dd>{reasons(card.priority_reason).join("; ") || "правило не объяснено"}</dd>
-      <dt>SLA первой реакции</dt><dd>{card.type === "commitment" ? "не применяется к обязательству" : slaStateLabels[card.sla.state] ?? card.sla.state}</dd>
-      <dt>Срок первой реакции</dt><dd>{card.type === "commitment" ? "не применяется" : card.sla.due_at ? new Date(card.sla.due_at).toLocaleString() : "не рассчитан"}</dd>
-      <dt>Первая реакция</dt><dd>{card.type === "commitment" ? "не применяется" : card.sla.first_response_at ? new Date(card.sla.first_response_at).toLocaleString() : "не найдена"}</dd>
-      <dt>Почему SLA</dt><dd>{card.type === "commitment" ? "Для обязательства рассчитывается срок обязательства, а не SLA первой реакции." : card.sla.reason ? `${card.sla.reason.sla_minutes ?? "—"} рабочих минут, ${card.sla.reason.timezone ?? "часовой пояс не указан"}; оценка на ${card.sla.reason.evaluated_at ? new Date(String(card.sla.reason.evaluated_at)).toLocaleString() : "момент запуска"}.` : "версия SLA не была доступна"}</dd>
+      <dt>SLA первой реакции</dt><dd>{card.type !== "unanswered" ? "не применяется к этому типу" : slaStateLabels[card.sla.state] ?? card.sla.state}</dd>
+      <dt>Срок первой реакции</dt><dd>{card.type !== "unanswered" ? "не применяется" : card.sla.due_at ? new Date(card.sla.due_at).toLocaleString() : "не рассчитан"}</dd>
+      <dt>Первая реакция</dt><dd>{card.type !== "unanswered" ? "не применяется" : card.sla.first_response_at ? new Date(card.sla.first_response_at).toLocaleString() : "не найдена"}</dd>
+      <dt>Почему SLA</dt><dd>{card.type !== "unanswered" ? "Для этого типа рассчитывается его собственный приоритет, а не SLA первой реакции." : card.sla.reason ? `${card.sla.reason.sla_minutes ?? "—"} рабочих минут, ${card.sla.reason.timezone ?? "часовой пояс не указан"}; оценка на ${card.sla.reason.evaluated_at ? new Date(String(card.sla.reason.evaluated_at)).toLocaleString() : "момент запуска"}.` : "версия SLA не была доступна"}</dd>
       <dt>Версия условий</dt><dd>{card.sla.settings_version_id ?? "не зафиксирована"}</dd>
       <dt>Уверенность</dt><dd>{Math.round(card.confidence * 100)}% (не измеренная вероятность правильности)</dd>
     </dl>
@@ -151,6 +152,6 @@ export function FindingDetails({ card }: { card: FindingCard }) {
     {card.detector && <p>
       Модель: {card.detector.model_id ?? "не указана"} · prompt {card.detector.prompt_version ?? "—"} · схема {card.detector.schema_version ?? "—"} · длительность {card.detector.duration_ms ?? "—"} мс · стоимость {card.detector.cost_usd === null ? "неизвестна" : card.detector.cost_usd}.
     </p>}
-    <p>На этом шаге доступны типы <code>unanswered</code> и <code>commitment</code>. Решения менеджера появятся в следующих задачах.</p>
+    <p>На этом шаге доступны типы <code>unanswered</code>, <code>commitment</code> и <code>complaint</code>. Решения менеджера появятся в следующих задачах.</p>
   </article>;
 }

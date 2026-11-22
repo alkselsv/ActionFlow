@@ -60,7 +60,7 @@ export type CommitmentInfo = {
 export type FindingSummary = {
   id: string;
   project_id: string;
-  type: "unanswered" | "commitment";
+  type: "unanswered" | "commitment" | "complaint";
   status: "new" | "confirmed" | "rejected" | "snoozed" | "closed";
   priority: "low" | "medium" | "high" | "unknown";
   priority_reason: Record<string, unknown>;

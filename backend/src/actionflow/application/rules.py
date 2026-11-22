@@ -120,3 +120,32 @@ def evaluate_commitment(
         commitment_due_at=commitment.due_at,
         commitment_status=commitment.status,
     )
+
+
+def evaluate_complaint(
+    run: AnalysisRun,
+    settings: SettingsVersion | None,
+    candidate: Candidate,
+) -> RuleResult:
+    priority = calculate_priority(
+        PrioritySignals(
+            finding_type="complaint",
+            as_of=run.as_of,
+            explicit_risk=candidate.explicit_risk,
+            limitations=tuple(candidate.limitations),
+        )
+    )
+    return RuleResult(
+        priority=priority.priority,
+        priority_reason=priority.reason,
+        sla_due_at=None,
+        sla_state="not_calculated",
+        sla_reason={
+            "rule_version": "sla.v1",
+            "reason": "not_applicable",
+            "finding_type": "complaint",
+            "limitations": list(candidate.limitations),
+        },
+        first_response_at=None,
+        settings_version_id=settings.id if settings is not None else None,
+    )

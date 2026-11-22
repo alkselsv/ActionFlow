@@ -42,11 +42,12 @@ const statusLabels = {
 const stageLabels: Record<string, string> = {
   dispatch: "доставка команды", prepare: "подготовка входа", detector: "поиск обращений",
   unanswered_ready: "обращения без ответа", commitment_ready: "обязательства",
-  findings_ready: "находки готовы", finalize: "завершение",
+  complaints_ready: "претензии", findings_ready: "находки готовы", finalize: "завершение",
 };
 const findingTypeLabels: Record<string, string> = {
   unanswered: "Обращение без ответа",
   commitment: "Обязательство Vedita",
+  complaint: "Претензия клиента",
 };
 const errors: Record<string, string> = {
   analysis_input_too_large: "В срезе больше 50 000 сообщений. Сократите период.",
@@ -188,7 +189,7 @@ export function AnalysisPreparation({ projectId, onExpired, onCompleted }: {
   const stage = run ? stageLabels[run.stage] : null;
   return <section className="panel settings">
     <h2>Запуск анализа</h2>
-    <p>Кнопка запускает локальные детекторы обращений без ответа и обязательств Vedita на зафиксированном входе. Внешние LLM и платные вызовы не выполняются.</p>
+    <p>Кнопка запускает локальные детекторы обращений без ответа, обязательств Vedita и претензий клиента на зафиксированном входе. Внешние LLM и платные вызовы не выполняются.</p>
     <form onSubmit={submit}>
       <label>Начало периода<input name="period_start" type="datetime-local" required /></label>
       <label>Конец периода, не включительно<input name="period_end" type="datetime-local" required /></label>

@@ -245,6 +245,7 @@ docs/
 - `quote` обязателен для текстового основания и должен быть подстрокой редакции после нормализации пробелов; для медиа допускается `quote: null` и `limitation: "unparsed_content"`.
 - Минимум одно основание с ролью `anchor`. Ответ клиента, системное событие и цитата не могут быть основанием реакции Vedita без известной стороны.
 - `priority_hint` — только подсказка; итоговый приоритет вычисляет домен по AF-002. `confidence` не считается вероятностью правильности.
+- `explicit_risk` используется доменом для явного договорного или операционного риска; для `complaint` он повышает приоритет, но не заменяет проверку оснований.
 - `limitations` кодирует ограничения данных: `missing_text`, `unparsed_content`, `unknown_side`, `ambiguous_reference`, `outside_window`, `ambiguous_due`, `ambiguous_update`. Для обязательства `commitment.event` различает `promise`, `repeat`, `reschedule`, `cancel`, `fulfill`; `due_expression` — исходное выражение срока, а не вычисленный момент.
 - Кандидат с невалидными основаниями сохраняется как `invalid` с ошибками, но не создаёт карточку; запуск завершается `succeeded` с предупреждением. Это сохраняет диагностику и не маскирует ошибку модели.
 - Схема и prompt версионируются; неизвестные поля запрещены, новая версия схемы вводится явно.
@@ -276,7 +277,7 @@ Workflow `AnalysisWorkflow(run_id)`; ID `analysis:{run_id}`; namespace `default`
 
 Детекторы выполняются последовательно в MVP: предсказуемая стоимость и меньше конкуренции за провайдера. Параллельный запуск — возможное уточнение без изменения контракта.
 
-**Реализация #13–#15:** Activity `detect_unanswered` вызывает адаптер, проверяет схему и основания и сохраняет кандидата, карточку и наблюдение в одной транзакции. `detect_commitment` разрешает обещание в собственное обязательство, добавляет события и обновляет карточку; первое сообщение может быть контекстом, если обещание вышло из окна. `finalize_analysis` переводит запуск в `succeeded` со стадией `findings_ready` после обязательств или `unanswered_ready` в старом сценарии. `fail_analysis` фиксирует постоянную ошибку и стадию запуска.
+**Реализация #13–#16:** Activity `detect_unanswered` вызывает адаптер, проверяет схему и основания и сохраняет кандидата, карточку и наблюдение в одной транзакции. `detect_commitment` разрешает обещание в собственное обязательство, добавляет события и обновляет карточку; `detect_complaint` сохраняет претензию как эпизод с источниками и объяснимым приоритетом. Первое сообщение может быть контекстом, если обещание или претензия вышли из окна. `finalize_analysis` переводит запуск в `succeeded` со стадией `findings_ready` после новых детекторов или `unanswered_ready` в старом сценарии. `fail_analysis` фиксирует постоянную ошибку и стадию запуска.
 
 Политика повторов: initial 1 с, backoff 2, максимум 5 попыток, максимальный интервал 1 мин. `InvalidOutput`, ошибки валидации, `401/403` и нарушения схемы — non-retryable. `429`, `5xx`, таймауты — retryable. Превышение попыток переводит запуск в `failed`; повторный анализ — новый запуск с новым ID, а не правка старого.
 
@@ -324,7 +325,7 @@ Dispatcher — отдельный процесс с циклом PostgreSQL, б�
 | `issue_event` | `id`, `issue_id`, `kind`, `message_id`, `revision_id`, `at`, `uncertain` |
 | `commitment` | `id`, `project_id`, `anchor_message_id`, `anchor_revision_id`, `subject_text`, `assignee_name?`, `assignee_participant_id?`, `status`, `due_at?`, `due_uncertain`, `explicit_risk`, `created_at`, `updated_at`; `unique(project_id, anchor_message_id)` |
 | `commitment_event` | `id`, `commitment_id`, `kind`, `message_id?`, `revision_id?`, `due_at?`, `previous_due_at?`, `at`, `uncertain`; `unique(commitment_id, kind, message_id, revision_id)` |
-| `complaint_episode` | `id`, `project_id`, `anchor_message_id`, `anchor_revision_id`, `status` |
+| `complaint_episode` | В MVP эпизод хранится как `finding` с `finding_type=complaint` и `subject_kind=complaint_episode`; отдельная таблица не создаётся. |
 | `finding` | `id`, `project_id`, `finding_type`, `subject_kind`, `subject_id`, `status`, `priority`, `priority_reason jsonb`, `sla_due_at?`, `sla_state`, `sla_reason jsonb?`, `first_response_at?`, `commitment_due_at?`, `commitment_status?`, `current_run_id`, `version`, `updated_at`; `unique(project_id, finding_type, subject_kind, subject_id)` |
 | `finding_observation` | `id`, `finding_id`, `run_id`, `candidate_id`, `summary`, `priority`, `priority_reason jsonb`, `sla_due_at?`, `sla_state`, `sla_reason jsonb?`, `first_response_at?`, `commitment_due_at?`, `commitment_status?`, `settings_version_id?`, `observed_at` |
 | `finding_proposal` | `id`, `finding_id`, `run_id`, `kind`, `status`, `created_at`, `resolved_at?` |
@@ -351,6 +352,7 @@ Dispatcher — отдельный процесс с циклом PostgreSQL, б�
 | Детектор | FakeDetector; схема `detector_result.v1`; ссылки на проект/редакцию/цитату; неизвестная сторона; битое основание; timeout/InvalidOutput/повтор |
 | SLA и приоритет | 12 срезов AF-002, границы рабочего времени, `Europe/Moscow`, обещания без срока, просрочка |
 | Обязательства | обещание, предположение, цитата, повтор, перенос, отмена, исполнение, неизвестный срок/исполнитель, контекстный якорь, отсутствие дубля |
+| Претензии | повторяющаяся проблема, явное недовольство, эскалация, обычный вопрос, нейтральное наблюдение, цитата, неизвестная сторона, риск |
 | Решения | Четыре действия, предложения переоткрытия/пересмотра, stale `409`, повтор ключа, новые основания после закрытия |
 | Temporal | Падение dispatcher между commit и start; повторный start; убийство worker; retry и non-retryable; постоянная ошибка |
 | Сравнение | Одинаковый `input_hash`; разные настройки помечены `comparable=false`; решения менеджера не меняются |
