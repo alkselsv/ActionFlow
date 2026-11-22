@@ -44,12 +44,21 @@ export type FindingSummary = {
   type: "unanswered";
   status: "new" | "confirmed" | "rejected" | "snoozed" | "closed";
   priority: "low" | "medium" | "high" | "unknown";
+  priority_reason: Record<string, unknown>;
   description: string;
   confidence: number;
-  sla: { due_at: string | null; state: string };
+  sla: {
+    due_at: string | null;
+    state: string;
+    first_response_at: string | null;
+    reason: Record<string, unknown> | null;
+    settings_version_id: string | null;
+  };
+  limitations: string[];
   anchor_message_id: string;
   current_run_id: string | null;
   run_id: string | null;
+  as_of: string | null;
   version: number;
   updated_at: string;
 };
@@ -102,6 +111,15 @@ export type FindingCard = FindingSummary & {
     observed_at: string;
     as_of: string;
     summary: string;
+    priority: "low" | "medium" | "high" | "unknown" | null;
+    priority_reason: Record<string, unknown> | null;
+    sla: {
+      due_at: string | null;
+      state: string | null;
+      first_response_at: string | null;
+      reason: Record<string, unknown> | null;
+      settings_version_id: string | null;
+    };
   }[];
   detector: {
     provider: string | null;
@@ -114,6 +132,16 @@ export type FindingCard = FindingSummary & {
     cost_usd: number | null;
   } | null;
   first_response_at: string | null;
+};
+
+export type FindingCounts = {
+  total: number;
+  open: number;
+  sla_breaches: number;
+  by_status: Record<string, number>;
+  by_priority: Record<string, number>;
+  by_type: Record<string, number>;
+  by_sla: Record<string, number>;
 };
 
 export type ProjectSettings = {

@@ -107,13 +107,14 @@ def setup_project(browser):
         },
     )
     assert settings.status_code == 201
+    settings_id = settings.json()["id"]
     imported = browser.post(
         f"/api/v1/projects/{project_id}/messages/import",
         headers={**ORIGIN, "Content-Type": "application/json"},
         content=(FIXTURES / "north-conv-n-001.json").read_bytes(),
     )
     assert imported.status_code == 200
-    return project_id
+    return project_id, settings_id
 
 
 def run_pipeline(browser, sessions, project_id, *, key, detector=None, apply_to_queue=True):
@@ -137,15 +138,44 @@ def run_pipeline(browser, sessions, project_id, *, key, detector=None, apply_to_
     return run_id
 
 
+def update_response_sla(browser, project_id, base_version_id, minutes):
+    response = browser.post(
+        f"/api/v1/projects/{project_id}/settings",
+        headers=ORIGIN,
+        json={
+            "base_version_id": base_version_id,
+            "context_text": "Synthetic context",
+            "agreements": "",
+            "manager_name": "Manager",
+            "client_type": "north",
+            "work_hours": {
+                "weekdays": [1, 2, 3, 4, 5],
+                "start": "09:00",
+                "end": "18:00",
+            },
+            "timezone": "Europe/Moscow",
+            "first_response_minutes": minutes,
+            "calendar": {"closed_dates": []},
+            "participant_sides": [
+                {"source_author_id": "user9001", "side": "customer"},
+                {"source_author_id": "user9101", "side": "vedita"},
+            ],
+        },
+    )
+    assert response.status_code == 201
+    return response.json()["id"]
+
+
 def test_saved_unanswered_card_evidence_and_idempotent_runs(tmp_path, monkeypatch):
     settings, sessions = setup_db(tmp_path, monkeypatch)
     with TestClient(create_app(settings)) as browser:
-        project_id = setup_project(browser)
+        project_id, settings_id = setup_project(browser)
         run_id = run_pipeline(browser, sessions, project_id, key="unanswered-1")
 
         run = browser.get(f"/api/v1/analyses/{run_id}").json()
         assert run["status"] == "succeeded"
         assert run["stage"] == "unanswered_ready"
+        assert run["settings_version_id"] == settings_id
         assert run["detector"]["model_id"] == "local-baseline-unanswered-v1"
         assert run["detector"]["prompt_version"] == "unanswered-rules-v1"
         assert run["detector"]["schema_version"] == "detector_result.v1"
@@ -157,6 +187,9 @@ def test_saved_unanswered_card_evidence_and_idempotent_runs(tmp_path, monkeypatc
 
         findings = browser.get(f"/api/v1/analyses/{run_id}/findings").json()["items"]
         assert len(findings) == 1
+        assert findings[0]["priority"] == "high"
+        assert findings[0]["sla"]["state"] == "breached"
+        assert findings[0]["limitations"]
         card_id = findings[0]["id"]
         card = browser.get(f"/api/v1/findings/{card_id}?run_id={run_id}").json()
         assert card["type"] == "unanswered"
@@ -174,6 +207,25 @@ def test_saved_unanswered_card_evidence_and_idempotent_runs(tmp_path, monkeypatc
         )
         assert card["history"][0]["run_id"] == run_id
         assert card["detector"]["cost_usd"] is None
+        assert card["priority"] == "high"
+        assert card["priority_reason"]["rule_version"] == "priority.v1"
+        assert "first_response_sla_breached" in card["priority_reason"]["reasons"]
+        assert card["sla"]["state"] == "breached"
+        assert card["sla"]["first_response_at"].startswith("2026-09-15T13:10:00")
+        assert card["sla"]["settings_version_id"] == settings_id
+        assert card["sla"]["reason"]["sla_minutes"] == 60
+        assert card["sla"]["due_at"].startswith("2026-09-15T10:30:00")
+
+        queue = browser.get(
+            f"/api/v1/projects/{project_id}/findings?priority=high&sla=breached"
+        ).json()
+        assert [item["id"] for item in queue["items"]] == [card_id]
+        counts = browser.get(
+            f"/api/v1/projects/{project_id}/findings/counts"
+        ).json()
+        assert counts["open"] == 1
+        assert counts["sla_breaches"] == 1
+        assert counts["by_sla"]["breached"] == 1
 
         candidates = browser.get(f"/api/v1/analyses/{run_id}/candidates").json()["items"]
         assert len(candidates) == 1
@@ -221,10 +273,63 @@ def test_saved_unanswered_card_evidence_and_idempotent_runs(tmp_path, monkeypatc
         )
 
 
+def test_changed_settings_do_not_rewrite_previous_sla(tmp_path, monkeypatch):
+    settings, sessions = setup_db(tmp_path, monkeypatch)
+    with TestClient(create_app(settings)) as browser:
+        project_id, first_settings_id = setup_project(browser)
+        first_run = run_pipeline(browser, sessions, project_id, key="sla-first")
+        card_id = browser.get(
+            f"/api/v1/analyses/{first_run}/findings"
+        ).json()["items"][0]["id"]
+        first_card = browser.get(
+            f"/api/v1/findings/{card_id}?run_id={first_run}"
+        ).json()
+        assert first_card["sla"]["state"] == "breached"
+        assert first_card["sla"]["reason"]["sla_minutes"] == 60
+
+        second_settings_id = update_response_sla(
+            browser, project_id, first_settings_id, 240
+        )
+        assert second_settings_id != first_settings_id
+        second_run = run_pipeline(browser, sessions, project_id, key="sla-second")
+        second_card = browser.get(
+            f"/api/v1/findings/{card_id}?run_id={second_run}"
+        ).json()
+        assert second_card["sla"]["state"] == "met"
+        assert second_card["sla"]["reason"]["sla_minutes"] == 240
+        assert second_card["priority"] == "medium"
+
+        # The first run keeps its own calculation and settings version.
+        first_card_again = browser.get(
+            f"/api/v1/findings/{card_id}?run_id={first_run}"
+        ).json()
+        assert first_card_again["sla"]["state"] == "breached"
+        assert first_card_again["sla"]["reason"]["sla_minutes"] == 60
+        assert first_card_again["sla"]["settings_version_id"] == first_settings_id
+
+        first_queue = browser.get(
+            f"/api/v1/projects/{project_id}/findings?run_id={first_run}&priority=high&sla=breached"
+        ).json()
+        assert [item["id"] for item in first_queue["items"]] == [card_id]
+        first_counts = browser.get(
+            f"/api/v1/projects/{project_id}/findings/counts?run_id={first_run}"
+        ).json()
+        assert first_counts["sla_breaches"] == 1
+
+        second_queue = browser.get(
+            f"/api/v1/projects/{project_id}/findings?run_id={second_run}&priority=medium&sla=met"
+        ).json()
+        assert [item["id"] for item in second_queue["items"]] == [card_id]
+        second_counts = browser.get(
+            f"/api/v1/projects/{project_id}/findings/counts?run_id={second_run}"
+        ).json()
+        assert second_counts["sla_breaches"] == 0
+
+
 def test_foreign_evidence_is_rejected_without_creating_a_card(tmp_path, monkeypatch):
     settings, sessions = setup_db(tmp_path, monkeypatch)
     with TestClient(create_app(settings)) as browser:
-        project_id = setup_project(browser)
+        project_id, _ = setup_project(browser)
         run_id = run_pipeline(
             browser,
             sessions,
@@ -259,7 +364,7 @@ def test_detector_errors_are_classified_for_temporal(
 ):
     settings, sessions = setup_db(tmp_path, monkeypatch)
     with TestClient(create_app(settings)) as browser:
-        project_id = setup_project(browser)
+        project_id, _ = setup_project(browser)
         response = browser.post(
             f"/api/v1/projects/{project_id}/analyses",
             headers={**ORIGIN, "Idempotency-Key": "provider-" + code},
@@ -283,7 +388,7 @@ def test_detector_errors_are_classified_for_temporal(
 def test_invalid_model_output_is_non_retryable(tmp_path, monkeypatch):
     settings, sessions = setup_db(tmp_path, monkeypatch)
     with TestClient(create_app(settings)) as browser:
-        project_id = setup_project(browser)
+        project_id, _ = setup_project(browser)
         response = browser.post(
             f"/api/v1/projects/{project_id}/analyses",
             headers={**ORIGIN, "Idempotency-Key": "invalid-output"},

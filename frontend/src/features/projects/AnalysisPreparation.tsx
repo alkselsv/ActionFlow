@@ -57,8 +57,8 @@ const errors: Record<string, string> = {
   analysis_workflow_failed: "Workflow завершился с ошибкой.",
 };
 
-export function AnalysisPreparation({ projectId, onExpired }: {
-  projectId: string; onExpired: () => void;
+export function AnalysisPreparation({ projectId, onExpired, onCompleted }: {
+  projectId: string; onExpired: () => void; onCompleted?: () => void;
 }) {
   const [run, setRun] = useState<Run | null>(null);
   const [history, setHistory] = useState<Run[]>([]);
@@ -120,6 +120,7 @@ export function AnalysisPreparation({ projectId, onExpired }: {
       } else {
         setCard(null);
       }
+      if (active) onCompleted?.();
     }).catch((cause) => { if (active) handleError(cause); });
     return () => { active = false; };
   }, [runId, status]);

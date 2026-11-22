@@ -155,13 +155,13 @@ docs/
 
 | Метод и путь | Вход | Результат | Ошибки |
 | --- | --- | --- | --- |
-| `GET /projects/{id}/findings` | `type?`, `status?`, `priority?`, `sla?`, `limit`, `cursor` | карточки очереди | `404`, `422` |
-| `GET /projects/{id}/findings/counts` | — | открытые по типам/приоритетам, нарушения SLA | `404` |
+| `GET /projects/{id}/findings` | `type?`, `status?`, `priority?`, `sla?`, `run_id?`, `limit`, `cursor` | карточки очереди | `404`, `422` |
+| `GET /projects/{id}/findings/counts` | `run_id?` | открытые по типам/приоритетам, нарушения SLA | `404` |
 | `GET /findings/{id}` | — | карточка, основания, окружение, SLA, предложение, история, `version` | `404` |
 | `GET /findings/{id}/history` | `limit`, `cursor` | наблюдения и решения | `404` |
 | `POST /findings/{id}/actions` | `action`, `expected_version`, `comment?`, `snooze_until?`, `proposal_id?` | `200` обновлённая карточка | `409`, `422` |
 
-Сортировка очереди: высокий приоритет → срок SLA/обязательства → `updated_at`. Карточка содержит `type`, `status`, `priority` и `priority_reason`, `sla {due_at, state, first_response_at}`, `subject`, `description`, `suggested_action`, `confidence`, `evidence[]`, `history[]`, `current_run_id`, `version`.
+Сортировка очереди: `updated_at` → `id`; приоритет и SLA доступны фильтрами и показываются в элементе. Карточка содержит `type`, `status`, `priority` и `priority_reason`, `sla {due_at, state, first_response_at, reason, settings_version_id}`, `limitations`, `subject`, `description`, `suggested_action`, `confidence`, `evidence[]`, `history[]`, `current_run_id`, `version`. Для `run_id` фильтры и счётчики используют сохранённые результаты этого запуска, а не текущую настройку проекта.
 
 Действия:
 
@@ -244,6 +244,13 @@ docs/
 
 Адаптер: `DetectorModel.detect(request) -> DetectorResponse` (синхронный вызов внутри activity). Возвращает структурированный результат и usage. Ошибки: `ProviderUnavailable`, `RateLimited`, `Timeout`, `InvalidOutput`; первые три ретраятся, `InvalidOutput` — нет. Без утверждённого провайдера реализация — `UnconfiguredDetector`, которая падает с `LLMNotConfigured`; тесты используют `FakeDetector` и записанные ответы.
 
+### Правила SLA и приоритета
+
+SLA первой реакции — чистая функция от `anchor.sent_at`, первой реакции Vedita, `as_of` и выбранной `settings_version`. Рабочие минуты добавляются по `work_hours` в `timezone`; ночь, выходные и `calendar.closed_dates` не расходуют SLA. Реакция на границе считается своевременной; отсутствие реакции на границе — нарушением. Если сторона якоря или ответа неизвестна, текст/вложение не разобраны, результат получает `state = "uncertain"`, а не уверенное нарушение.
+
+Итоговый приоритет вычисляется по AF-002, а не по `priority_hint`: явный риск, пропущенный срок обязательства и подтверждённое нарушение SLA повышают его; будущий срок обязательства может быть низким; ограничения данных не позволяют выдать высокий приоритет только из-за предполагаемой просрочки. Расчёт сохраняется в `finding` для текущей очереди и в `finding_observation` для истории запуска вместе с `settings_version_id`.
+
+
 ## Temporal: workflow и Activities
 
 Workflow `AnalysisWorkflow(run_id)`; ID `analysis:{run_id}`; namespace `default`; task queue `actionflow`; `WorkflowIDReusePolicy.REJECT_DUPLICATE`. Workflow детерминирован и не обращается к БД/сети.
@@ -260,7 +267,7 @@ Workflow `AnalysisWorkflow(run_id)`; ID `analysis:{run_id}`; namespace `default`
 
 Детекторы выполняются последовательно в MVP: предсказуемая стоимость и меньше конкуренции за провайдера. Параллельный запуск — возможное уточнение без изменения контракта.
 
-**Реализация #13:** Activity `detect_unanswered` вызывает адаптер, проверяет схему и основания и сохраняет кандидата, карточку и наблюдение в одной транзакции. `apply_rules_and_persist` для SLA/приоритета появится в #14; `finalize_analysis` уже переводит запуск в `succeeded` со стадией `unanswered_ready`. `fail_analysis` фиксирует постоянную ошибку и стадию запуска.
+**Реализация #13:** Activity `detect_unanswered` вызывает адаптер, проверяет схему и основания и сохраняет кандидата, карточку и наблюдение в одной транзакции. С #14 в этой же транзакции рассчитываются SLA и приоритет; `finalize_analysis` переводит запуск в `succeeded` со стадией `unanswered_ready`. `fail_analysis` фиксирует постоянную ошибку и стадию запуска.
 
 Политика повторов: initial 1 с, backoff 2, максимум 5 попыток, максимальный интервал 1 мин. `InvalidOutput`, ошибки валидации, `401/403` и нарушения схемы — non-retryable. `429`, `5xx`, таймауты — retryable. Превышение попыток переводит запуск в `failed`; повторный анализ — новый запуск с новым ID, а не правка старого.
 
@@ -309,8 +316,8 @@ Dispatcher — отдельный процесс с циклом PostgreSQL, б�
 | `commitment` | `id`, `project_id`, `issue_id?`, `anchor_message_id`, `anchor_revision_id`, `subject_text`, `assignee_participant_id?`, `status` |
 | `commitment_event` | `id`, `commitment_id`, `kind`, `message_id?`, `revision_id?`, `due_at?`, `at`, `uncertain` |
 | `complaint_episode` | `id`, `project_id`, `anchor_message_id`, `anchor_revision_id`, `status` |
-| `finding` | `id`, `project_id`, `finding_type`, `subject_kind`, `subject_id`, `status`, `priority`, `priority_reason jsonb`, `sla_due_at?`, `sla_state`, `current_run_id`, `version`, `updated_at`; `unique(project_id, finding_type, subject_kind, subject_id)` |
-| `finding_observation` | `id`, `finding_id`, `run_id`, `candidate_id`, `summary`, `observed_at` |
+| `finding` | `id`, `project_id`, `finding_type`, `subject_kind`, `subject_id`, `status`, `priority`, `priority_reason jsonb`, `sla_due_at?`, `sla_state`, `sla_reason jsonb?`, `first_response_at?`, `current_run_id`, `version`, `updated_at`; `unique(project_id, finding_type, subject_kind, subject_id)` |
+| `finding_observation` | `id`, `finding_id`, `run_id`, `candidate_id`, `summary`, `priority`, `priority_reason jsonb`, `sla_due_at?`, `sla_state`, `sla_reason jsonb?`, `first_response_at?`, `settings_version_id?`, `observed_at` |
 | `finding_proposal` | `id`, `finding_id`, `run_id`, `kind`, `status`, `created_at`, `resolved_at?` |
 | `candidate` | `id`, `run_id`, `finding_type`, `candidate_key`, `subject_kind`, `anchor_message_id`, `description`, `confidence`, `priority_hint`, `suggested_action`, `limitations jsonb`, `status`, `validation_errors jsonb`, `raw_payload jsonb`; `unique(run_id, candidate_key)` |
 | `candidate_evidence` | `id`, `candidate_id`, `role`, `message_id`, `revision_id`, `quote?`, `quote_hash?`; `unique(candidate_id, role, message_id, revision_id, quote_hash)` |
@@ -322,7 +329,7 @@ Dispatcher — отдельный процесс с циклом PostgreSQL, б�
 | `outbox_event` | `id`, `event_key unique`, `kind`, `aggregate_type`, `aggregate_id`, `payload jsonb`, `status`, `attempts`, `next_attempt_at`, `last_error?`, `dispatched_at?` |
 | `idempotency_key` | `id`, `user_id`, `endpoint`, `key`, `request_hash`, `response_status`, `response_body jsonb`, `expires_at`; `unique(user_id, endpoint, key)` |
 
-Индексы: очередь `(project_id, status, priority, updated_at DESC)`, `(project_id, finding_type, status)`, `(finding_id, created_at DESC)` для истории; `analysis_run(project_id, created_at DESC)`, `analysis_input_message(run_id)`; `candidate(run_id)`; `outbox_event(status, next_attempt_at)`; `session(expires_at)`. Уникальные ограничения — основной механизм идемпотентности при гонках.
+Индексы: очередь `(project_id, status, priority, updated_at DESC)`, `(project_id, finding_type, status)`, `(project_id, sla_state, priority)`, `(finding_id, created_at DESC)` для истории; `analysis_run(project_id, created_at DESC)`, `analysis_input_message(run_id)`; `candidate(run_id)`; `outbox_event(status, next_attempt_at)`; `session(expires_at)`. Уникальные ограничения — основной механизм идемпотентности при гонках.
 
 Миграции: Alembic, одна начальная ревизия и далее по одной на изменение; `alembic upgrade head` — явная команда, не автоматически при старте API. Тесты применяют миграции на пустую БД и проверяют откат последней ревизии в dev-контуре. Схема Temporal не входит в Alembic.
 

@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from actionflow.application.rules import RuleResult, evaluate_unanswered
 from actionflow.detectors.contracts import (
     Detector,
     DetectorRequest,
@@ -30,6 +31,7 @@ from actionflow.persistence.project_settings import (
     Message,
     MessageRevision,
     Participant,
+    SettingsVersion,
 )
 
 TERMINAL = {"succeeded", "failed"}
@@ -137,6 +139,7 @@ def _upsert_finding(
     run: AnalysisRun,
     candidate_row: Candidate,
     validation: CandidateValidation,
+    rules: RuleResult,
 ) -> bool:
     finding = db.scalar(
         select(Finding)
@@ -159,17 +162,20 @@ def _upsert_finding(
             anchor_message_id=candidate_row.anchor_message_id,
             anchor_revision_id=candidate_row.anchor_revision_id,
             status="new",
-            priority="unknown",
-            priority_reason={"reason": "sla_not_calculated"},
             description=candidate.description,
             suggested_action=candidate.suggested_action,
             confidence=candidate.confidence,
-            sla_state="not_calculated",
             latest_candidate_id=candidate_row.id,
             current_run_id=run.id,
             version=1,
             created_at=now,
             updated_at=now,
+            first_response_at=rules.first_response_at,
+            sla_due_at=rules.sla_due_at,
+            sla_state=rules.sla_state,
+            sla_reason=rules.sla_reason,
+            priority=rules.priority,
+            priority_reason=rules.priority_reason,
         )
         db.add(finding)
         db.flush()
@@ -188,6 +194,12 @@ def _upsert_finding(
             finding.confidence = candidate.confidence
             finding.latest_candidate_id = candidate_row.id
             finding.current_run_id = run.id
+            finding.first_response_at = rules.first_response_at
+            finding.sla_due_at = rules.sla_due_at
+            finding.sla_state = rules.sla_state
+            finding.sla_reason = rules.sla_reason
+            finding.priority = rules.priority
+            finding.priority_reason = rules.priority_reason
             changed = True
         if changed:
             finding.version += 1
@@ -207,6 +219,13 @@ def _upsert_finding(
                 candidate_id=candidate_row.id,
                 observed_at=now,
                 summary=candidate.description,
+                priority=rules.priority,
+                priority_reason=rules.priority_reason,
+                sla_due_at=rules.sla_due_at,
+                sla_state=rules.sla_state,
+                sla_reason=rules.sla_reason,
+                first_response_at=rules.first_response_at,
+                settings_version_id=rules.settings_version_id,
             )
         )
         return True
@@ -286,6 +305,12 @@ def analyze_unanswered(
         input_revisions = {
             message.message_id: message.revision_id for message in request.messages
         }
+        input_by_id = {message.message_id: message for message in request.messages}
+        settings = (
+            db.get(SettingsVersion, run.settings_version_id)
+            if run.settings_version_id
+            else None
+        )
         rejected: list[dict] = []
         for validation in validations:
             candidate_model = validation.candidate
@@ -330,7 +355,14 @@ def analyze_unanswered(
             db.flush()
             _store_evidence(db, candidate_row, validation)
             if validation.status == "valid" and run.apply_to_queue:
-                _upsert_finding(db, run, candidate_row, validation)
+                rules = evaluate_unanswered(
+                    run,
+                    settings,
+                    input_by_id[anchor_id],
+                    candidate_model,
+                    input_by_id,
+                )
+                _upsert_finding(db, run, candidate_row, validation, rules)
         run.finding_count = db.scalar(
             select(func.count())
             .select_from(FindingObservation)

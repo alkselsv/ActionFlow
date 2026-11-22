@@ -137,22 +137,43 @@ def _candidate_view(db, candidate):
     }
 
 
-def _summary(finding, run=None):
+def _summary(finding, run=None, observation=None):
+    priority = (observation.priority if observation else None) or finding.priority
+    priority_reason = (
+        observation.priority_reason if observation else None
+    ) or finding.priority_reason
+    due_at = (observation.sla_due_at if observation else None) or finding.sla_due_at
+    sla_state = (observation.sla_state if observation else None) or finding.sla_state
+    sla_reason = (observation.sla_reason if observation else None) or finding.sla_reason
+    first_response_at = (
+        (observation.first_response_at if observation else None)
+        or finding.first_response_at
+    )
+    settings_version_id = (
+        (observation.settings_version_id if observation else None)
+        or (run.settings_version_id if run is not None else None)
+    )
     return {
         "id": finding.id,
         "project_id": finding.project_id,
         "type": finding.finding_type,
         "status": finding.status,
-        "priority": finding.priority,
+        "priority": priority,
+        "priority_reason": priority_reason,
         "description": finding.description,
         "confidence": finding.confidence,
         "sla": {
-            "due_at": as_utc(finding.sla_due_at),
-            "state": finding.sla_state,
+            "due_at": as_utc(due_at),
+            "state": sla_state,
+            "first_response_at": as_utc(first_response_at),
+            "reason": sla_reason,
+            "settings_version_id": settings_version_id,
         },
+        "limitations": (sla_reason or {}).get("limitations", []),
         "anchor_message_id": finding.anchor_message_id,
         "current_run_id": finding.current_run_id,
         "run_id": run.id if run is not None else None,
+        "as_of": as_utc(run.as_of) if run is not None else None,
         "version": finding.version,
         "updated_at": as_utc(finding.updated_at),
     }
@@ -172,6 +193,15 @@ def _history(db, finding_id):
             "observed_at": as_utc(observation.observed_at),
             "as_of": as_utc(run.as_of),
             "summary": observation.summary,
+            "priority": observation.priority,
+            "priority_reason": observation.priority_reason,
+            "sla": {
+                "due_at": as_utc(observation.sla_due_at),
+                "state": observation.sla_state,
+                "first_response_at": as_utc(observation.first_response_at),
+                "reason": observation.sla_reason,
+                "settings_version_id": observation.settings_version_id,
+            },
         }
         for observation, run in rows
     ]
@@ -221,13 +251,17 @@ def _finding(db, finding_id, run_id=None):
         )
         first_reaction_at = as_utc(supporting)
     return {
-        **_summary(finding, run),
+        **_summary(finding, run, observation),
         "description": candidate.description if candidate else finding.description,
         "recommendation": candidate.suggested_action
         if candidate
         else finding.suggested_action,
         "confidence": candidate.confidence if candidate else finding.confidence,
-        "priority_reason": finding.priority_reason,
+        "priority_reason": (
+            observation.priority_reason
+            if observation is not None and observation.priority_reason
+            else finding.priority_reason
+        ),
         "subject": {
             "kind": finding.subject_kind,
             "id": finding.subject_id,
@@ -253,7 +287,11 @@ def _finding(db, finding_id, run_id=None):
         }
         if run
         else None,
-        "first_response_at": first_reaction_at,
+        "first_response_at": (
+            observation.first_response_at
+            if observation is not None and observation.first_response_at
+            else first_reaction_at
+        ),
     }
 
 
@@ -264,23 +302,40 @@ def _project_findings(
     finding_type=None,
     status=None,
     priority=None,
+    sla_state=None,
     run_id=None,
     limit=50,
     cursor=None,
 ):
     require_project(db, project_id)
-    query = select(Finding).where(Finding.project_id == project_id)
+    selected_run = None
+    if run_id:
+        selected_run = _run(db, run_id)
+        query = (
+            select(Finding, FindingObservation)
+            .join(
+                FindingObservation,
+                FindingObservation.finding_id == Finding.id,
+            )
+            .where(
+                Finding.project_id == project_id,
+                FindingObservation.run_id == run_id,
+            )
+        )
+        if priority:
+            query = query.where(FindingObservation.priority == priority)
+        if sla_state:
+            query = query.where(FindingObservation.sla_state == sla_state)
+    else:
+        query = select(Finding).where(Finding.project_id == project_id)
+        if priority:
+            query = query.where(Finding.priority == priority)
+        if sla_state:
+            query = query.where(Finding.sla_state == sla_state)
     if finding_type:
         query = query.where(Finding.finding_type == finding_type)
     if status:
         query = query.where(Finding.status == status)
-    if priority:
-        query = query.where(Finding.priority == priority)
-    if run_id:
-        _run(db, run_id)
-        query = query.join(
-            FindingObservation, FindingObservation.finding_id == Finding.id
-        ).where(FindingObservation.run_id == run_id)
     query = query.order_by(Finding.updated_at.desc(), Finding.id.desc())
     if cursor:
         anchor = db.get(Finding, cursor)
@@ -293,18 +348,22 @@ def _project_findings(
                 & (Finding.id < anchor.id)
             )
         )
-    rows = list(db.scalars(query.limit(limit + 1)))
+    if run_id:
+        rows = db.execute(query.limit(limit + 1)).all()
+    else:
+        rows = [(item, None) for item in db.scalars(query.limit(limit + 1))]
     items = rows[:limit]
-    selected_run = db.get(AnalysisRun, run_id) if run_id else None
     return {
         "items": [
             _summary(
-                item,
-                selected_run or db.get(AnalysisRun, item.current_run_id),
+                finding,
+                selected_run
+                or db.get(AnalysisRun, finding.current_run_id),
+                observation,
             )
-            for item in items
+            for finding, observation in items
         ],
-        "next_cursor": items[-1].id if len(rows) > limit else None,
+        "next_cursor": items[-1][0].id if len(rows) > limit else None,
     }
 
 
@@ -315,6 +374,7 @@ def register_finding_routes(projects, router, Db, session_required, origin_requi
         type: str | None = None,
         status: str | None = None,
         priority: str | None = None,
+        sla: str | None = None,
         run_id: str | None = None,
         limit: int = Query(50, ge=1, le=100),
         cursor: str | None = None,
@@ -326,27 +386,59 @@ def register_finding_routes(projects, router, Db, session_required, origin_requi
             finding_type=type,
             status=status,
             priority=priority,
+            sla_state=sla,
             run_id=run_id,
             limit=limit,
             cursor=cursor,
         )
 
     @projects.get("/projects/{project_id}/findings/counts")
-    def project_finding_counts(project_id: str, db=Db):
+    def project_finding_counts(
+        project_id: str, run_id: str | None = None, db=Db
+    ):
         require_project(db, project_id)
-        rows = list(db.scalars(select(Finding).where(Finding.project_id == project_id)))
+        if run_id:
+            _run(db, run_id)
+            rows = db.execute(
+                select(Finding, FindingObservation)
+                .join(
+                    FindingObservation,
+                    FindingObservation.finding_id == Finding.id,
+                )
+                .where(
+                    Finding.project_id == project_id,
+                    FindingObservation.run_id == run_id,
+                )
+            ).all()
+        else:
+            rows = [(item, None) for item in db.scalars(
+                select(Finding).where(Finding.project_id == project_id)
+            )]
         by_status = {}
         by_priority = {}
         by_type = {}
-        for item in rows:
-            by_status[item.status] = by_status.get(item.status, 0) + 1
-            by_priority[item.priority] = by_priority.get(item.priority, 0) + 1
-            by_type[item.finding_type] = by_type.get(item.finding_type, 0) + 1
+        by_sla = {}
+        open_count = 0
+        sla_breaches = 0
+        for finding, observation in rows:
+            priority = (observation.priority if observation else None) or finding.priority
+            sla_state = (
+                observation.sla_state if observation else None
+            ) or finding.sla_state
+            by_status[finding.status] = by_status.get(finding.status, 0) + 1
+            by_priority[priority] = by_priority.get(priority, 0) + 1
+            by_type[finding.finding_type] = by_type.get(finding.finding_type, 0) + 1
+            by_sla[sla_state] = by_sla.get(sla_state, 0) + 1
+            open_count += finding.status in ("new", "confirmed", "snoozed")
+            sla_breaches += sla_state == "breached"
         return {
             "total": len(rows),
+            "open": open_count,
+            "sla_breaches": sla_breaches,
             "by_status": by_status,
             "by_priority": by_priority,
             "by_type": by_type,
+            "by_sla": by_sla,
         }
 
     @router.get("/findings/{finding_id}", dependencies=[session_required])
@@ -365,7 +457,12 @@ def register_finding_routes(projects, router, Db, session_required, origin_requi
             .where(FindingObservation.run_id == run.id)
             .order_by(Finding.updated_at.desc())
         ).all()
-        return {"items": [_summary(finding, run) for finding, _ in rows]}
+        return {
+            "items": [
+                _summary(finding, run, observation)
+                for finding, observation in rows
+            ]
+        }
 
     @router.get("/analyses/{run_id}/candidates", dependencies=[session_required])
     def run_candidates(run_id: str, db=Db):
