@@ -82,6 +82,7 @@ class Finding(Base):
             "priority",
             "updated_at",
         ),
+        Index("ix_finding_sla", "project_id", "sla_state", "priority"),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
@@ -101,6 +102,10 @@ class Finding(Base):
     confidence: Mapped[float] = mapped_column(Float)
     sla_due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     sla_state: Mapped[str] = mapped_column(String(30), default="not_calculated")
+    sla_reason: Mapped[dict | None] = mapped_column(document)
+    first_response_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
     latest_candidate_id: Mapped[str | None] = mapped_column(
         ForeignKey("candidate.id")
     )
@@ -133,3 +138,16 @@ class FindingObservation(Base):
         DateTime(timezone=True), default=utc_now
     )
     summary: Mapped[str] = mapped_column(Text)
+    priority: Mapped[str | None] = mapped_column(String(20))
+    priority_reason: Mapped[dict | None] = mapped_column(document)
+    sla_due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    sla_state: Mapped[str | None] = mapped_column(String(30))
+    sla_reason: Mapped[dict | None] = mapped_column(document)
+    first_response_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    settings_version_id: Mapped[str | None] = mapped_column(
+        ForeignKey(
+            "settings_version.id", name="fk_finding_observation_settings_version"
+        )
+    )

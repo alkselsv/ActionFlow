@@ -40,6 +40,12 @@ dd { margin: 0 0 .6rem; }
 .conversation { margin-top: 1rem; }
 .conversation article { scroll-margin-top: 1rem; }
 .findings-layout { display: grid; grid-template-columns: minmax(14rem, .8fr) 1.2fr; gap: 1rem; align-items: start; }
+.findings-layout.queue-layout { margin-top: 1rem; }
+.queue { margin-top: 1rem; }
+.queue .filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .6rem; margin: 1rem 0; }
+.queue .filters label { font-weight: 600; }
+.queue .filters select { font: inherit; padding: .45rem; border: 1px solid #869c98; border-radius: .35rem; }
+.queue-counts { font-weight: 600; }
 .finding-list { margin: 0; }
 .finding-list .project { text-align: start; }
 .finding-list .project.selected { outline: 2px solid #14675d; }
@@ -49,4 +55,4 @@ dd { margin: 0 0 .6rem; }
 .evidence-list li, .surrounding li { margin-bottom: .8rem; }
 .evidence-list li.anchor, .surrounding li.anchor { background: #fff7dd; border-left: 3px solid #c49a2c; padding: .5rem .7rem; }
 .evidence-list p, .surrounding p { margin: .3rem 0; }
-@media (max-width: 42rem) { .findings-layout { grid-template-columns: 1fr; } }
+@media (max-width: 42rem) { .findings-layout, .queue .filters { grid-template-columns: 1fr; } }

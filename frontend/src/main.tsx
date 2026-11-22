@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { ApiError, errorMessage, request, uploadTelegram, type Manager, type Project, type ConversationMessage, type MessageRevision } from "./api/client";
 import { ProjectSettingsForm } from "./features/projects/ProjectSettings";
 import { AnalysisPreparation } from "./features/projects/AnalysisPreparation";
+import { FindingsQueue } from "./features/findings/FindingsQueue";
 import "./style.css";
 
 function Login({ onLogin }: { onLogin: (manager: Manager) => void }) {
@@ -39,6 +40,7 @@ function Projects({ onExpired }: { onExpired: () => void }) {
   const [next, setNext] = useState<string | null>(null);
   const [selected, setSelected] = useState<Project | null>(null);
   const [selectionRevision, setSelectionRevision] = useState(0);
+  const [queueRevision, setQueueRevision] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [messages, setMessages] = useState<ConversationMessage[]>([]);
@@ -179,7 +181,8 @@ function Projects({ onExpired }: { onExpired: () => void }) {
       {selected && messages.length === 0 && !busy && <p>Сообщений пока нет.</p>}
       {messageCursor && <button className="quiet" disabled={busy} onClick={() => void perform(() => loadMessages(selected, messageCursor))}>Ещё сообщения</button>}
     </section>}
-    {selected && <AnalysisPreparation key={selected.id} projectId={selected.id} onExpired={onExpired} />}
+    {selected && <AnalysisPreparation key={selected.id} projectId={selected.id} onExpired={onExpired} onCompleted={() => setQueueRevision((revision) => revision + 1)} />}
+    {selected && <FindingsQueue key={selected.id + "-queue-" + queueRevision} projectId={selected.id} onExpired={onExpired} />}
   </>;
 }
 

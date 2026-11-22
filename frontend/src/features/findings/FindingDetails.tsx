@@ -18,6 +18,41 @@ const limitationLabels: Record<string, string> = {
   system_events: "В переписке есть системные события",
 };
 
+const priorityLabels: Record<string, string> = {
+  explicit_contract_or_operational_risk: "Явный договорный или операционный риск",
+  first_response_sla_breached: "Нарушен SLA первой реакции",
+  uncertain_or_pending_sla: "SLA ещё не истёк или расчёт ограничен данными",
+  open_request_waiting_for_response: "Открытое обращение ждёт содержательного ответа",
+  commitment_deadline_missed: "Пропущен срок обязательства",
+  commitment_deadline_in_future: "Срок обязательства ещё не наступил",
+  commitment_without_reliable_deadline: "У обязательства нет надёжного срока",
+  complaint_requires_manager_review: "Претензия требует проверки менеджера",
+  unknown_finding_type: "Тип находки требует проверки",
+  data_limitations_require_manual_review: "Недостаточно данных для уверенного вывода",
+};
+
+const slaStateLabels: Record<string, string> = {
+  met: "первая реакция своевременна",
+  breached: "первая реакция просрочена",
+  pending: "срок ещё не истёк",
+  uncertain: "расчёт ограничен данными",
+  not_calculated: "не рассчитан",
+};
+
+const priorityValueLabels: Record<string, string> = {
+  low: "низкий",
+  medium: "средний",
+  high: "высокий",
+  unknown: "не рассчитан",
+};
+
+function reasons(value: unknown) {
+  const reasons = (value as { reasons?: unknown })?.reasons;
+  return Array.isArray(reasons)
+    ? reasons.map((item) => priorityLabels[String(item)] ?? String(item))
+    : [];
+}
+
 function evidenceText(message: FindingMessage) {
   return message.quote || message.text || "[Нет текста]";
 }
@@ -34,8 +69,13 @@ export function FindingDetails({ card }: { card: FindingCard }) {
     <dl>
       <dt>Описание</dt><dd>{card.description}</dd>
       <dt>Рекомендация</dt><dd>{actionLabels[card.recommendation] ?? card.recommendation}</dd>
-      <dt>Приоритет</dt><dd>{card.priority === "unknown" ? "ещё не рассчитан" : card.priority}</dd>
-      <dt>SLA первой реакции</dt><dd>{card.sla.state === "not_calculated" ? "ещё не рассчитан" : card.sla.state}</dd>
+      <dt>Приоритет</dt><dd>{priorityValueLabels[card.priority] ?? card.priority}</dd>
+      <dt>Почему приоритет</dt><dd>{reasons(card.priority_reason).join("; ") || "правило не объяснено"}</dd>
+      <dt>SLA первой реакции</dt><dd>{slaStateLabels[card.sla.state] ?? card.sla.state}</dd>
+      <dt>Срок первой реакции</dt><dd>{card.sla.due_at ? new Date(card.sla.due_at).toLocaleString() : "не рассчитан"}</dd>
+      <dt>Первая реакция</dt><dd>{card.sla.first_response_at ? new Date(card.sla.first_response_at).toLocaleString() : "не найдена"}</dd>
+      <dt>Почему SLA</dt><dd>{card.sla.reason ? `${card.sla.reason.sla_minutes ?? "—"} рабочих минут, ${card.sla.reason.timezone ?? "часовой пояс не указан"}; оценка на ${card.sla.reason.evaluated_at ? new Date(String(card.sla.reason.evaluated_at)).toLocaleString() : "момент запуска"}.` : "версия SLA не была доступна"}</dd>
+      <dt>Версия условий</dt><dd>{card.sla.settings_version_id ?? "не зафиксирована"}</dd>
       <dt>Уверенность</dt><dd>{Math.round(card.confidence * 100)}% (не измеренная вероятность правильности)</dd>
     </dl>
     {card.limitations.length > 0 && <p><strong>Ограничения:</strong> {card.limitations.map((item) => limitationLabels[item] ?? item).join("; ")}.</p>}
@@ -61,6 +101,7 @@ export function FindingDetails({ card }: { card: FindingCard }) {
     <ol>{card.history.map((item) => <li key={item.run_id}>
       {new Date(item.observed_at).toLocaleString()} · момент оценки {new Date(item.as_of).toLocaleString()} · запуск {item.run_id}
       <p>{item.summary}</p>
+      <p>Приоритет: {item.priority ? priorityValueLabels[item.priority] ?? item.priority : "не рассчитан"} · SLA: {item.sla.state ? slaStateLabels[item.sla.state] ?? item.sla.state : "не рассчитан"} · версия условий {item.sla.settings_version_id ?? "не зафиксирована"}.</p>
     </li>)}</ol>
 
     {card.detector && <p>
