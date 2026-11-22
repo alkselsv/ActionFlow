@@ -731,3 +731,44 @@ def test_completed_commitment_proposes_but_does_not_close_card(tmp_path, monkeyp
         assert next(
             item for item in closed["proposals"] if item["id"] == proposal["id"]
         )["status"] == "accepted"
+
+
+def test_manager_decision_survives_api_restart(tmp_path, monkeypatch):
+    settings, sessions = setup_db(tmp_path, monkeypatch)
+    with TestClient(create_app(settings)) as browser:
+        project_id, settings_id = setup_project(browser)
+        with sessions.begin() as db:
+            version = db.get(SettingsVersion, settings_id)
+            assert version is not None
+            version.created_at = datetime(2026, 9, 13, 12, 0, tzinfo=UTC)
+        run_pipeline(
+            browser,
+            sessions,
+            project_id,
+            key="restart-run",
+            as_of="2026-09-15T10:35:00Z",
+            period_start="2026-09-15T00:00:00Z",
+        )
+        card = next(
+            browser.get(f"/api/v1/findings/{item['id']}").json()
+            for item in commitment_cards(browser, project_id)
+            if "смет" in item["description"]
+        )
+        confirmed = browser.post(
+            f"/api/v1/findings/{card['id']}/actions",
+            headers={**ORIGIN, "Idempotency-Key": "restart-confirm"},
+            json={"action": "confirm", "expected_version": card["version"]},
+        )
+        assert confirmed.status_code == 200
+        cookie = browser.cookies["af_session"]
+
+    with TestClient(create_app(settings)) as browser:
+        browser.cookies.set("af_session", cookie)
+        restored = browser.get(f"/api/v1/findings/{card['id']}").json()
+        assert restored["status"] == "confirmed"
+        assert restored["actions"][0]["action"] == "confirm"
+        assert restored["actions"][0]["actor"] == "manager"
+        counts = browser.get(
+            f"/api/v1/projects/{project_id}/findings/counts"
+        ).json()
+        assert counts["by_status"]["confirmed"] == 1

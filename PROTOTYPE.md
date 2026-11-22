@@ -118,7 +118,7 @@ Telegram JSON export
 
 Temporal заменяет предложенные ранее APScheduler и Celery для этих процессов. Redis для расписаний и очереди Temporal не требуется. Прикладная БД и хранилища Temporal разделяются; для пилота возможен один экземпляр PostgreSQL с отдельными базами и пользователями.
 
-Предметная логика отделяется от workflow. Работа с LLM, Cognee, БД и внешними системами выполняется в Activities; workflow задаёт порядок шагов и ожидания. Декомпозиция процессов, Activities и outbox зафиксированы в [контрактах](docs/specs/responseflow-contracts.md); схема эксплуатации — в #19.
+Предметная логика отделяется от workflow. Работа с LLM, Cognee, БД и внешними системами выполняется в Activities; workflow задаёт порядок шагов и ожидания. Декомпозиция процессов, Activities и outbox зафиксированы в [контрактах](docs/specs/responseflow-contracts.md); эксплуатация, диагностика и восстановление — в [AF-021](docs/experiment/af-021-operations.md).
 
 Для первого эксперимента достаточно истории переписки и ручного контекста. На M0 реальных клиентских переписок Vedita нет, поэтому первый набор — синтетический; состав и ограничения зафиксированы в [записи AF-001](docs/experiment/af-001-source-data.md). Через `ContextProvider` сравниваем базовый вариант с Cognee на одном историческом наборе. Выбор Cognee и LLM ещё не утверждён; внешние LLM/embedding-провайдеры на M0 не разрешены ([политика окружения](docs/experiment/af-004-environment-policy.md)). Сообщения, подтверждённые состояния обязательств и решения менеджера остаются в PostgreSQL. См. [исследование Cognee](docs/research/cognee-memory.md) и [примеры чатов](docs/research/cognee-chat-examples.md).
 

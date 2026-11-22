@@ -21,6 +21,7 @@ from temporalio.client import Client as TemporalClient
 from temporalio.service import RPCError
 
 from actionflow.api.analyses import register_analysis_routes
+from actionflow.api.diagnostics import register_diagnostics_routes
 from actionflow.api.findings import register_finding_routes
 from actionflow.api.project_settings import (
     SettingsInput,
@@ -512,6 +513,7 @@ def create_app(settings: Settings) -> FastAPI:
     register_finding_routes(
         projects, router, Db, SessionRequired, Depends(check_origin)
     )
+    register_diagnostics_routes(router, Db, SessionRequired, settings)
     router.include_router(projects)
     app.include_router(router)
     return app

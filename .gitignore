@@ -5,6 +5,9 @@
 !/data/fixtures/
 !/data/fixtures/**
 
+# Local backup dumps. Real data and dumps must never be committed.
+/backups/
+
 # Secrets and local environment
 .env
 .env.*

@@ -66,6 +66,25 @@ class Client(Base):
     name: Mapped[str] = mapped_column(String(200), unique=True)
 
 
+class WorkerHeartbeat(Base):
+    """Last seen timestamp for an execution component.
+
+    The row is operational metadata only: it contains no message text or
+    credentials and lets diagnostics distinguish a stopped worker from an
+    API/database outage.
+    """
+
+    __tablename__ = "worker_heartbeat"
+
+    name: Mapped[str] = mapped_column(String(80), primary_key=True)
+    task_queue: Mapped[str] = mapped_column(String(120))
+    host: Mapped[str] = mapped_column(String(255))
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    last_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), index=True
+    )
+
+
 class Project(Base):
     __tablename__ = "project"
     __table_args__ = (UniqueConstraint("client_id", "name"),)

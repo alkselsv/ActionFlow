@@ -2,7 +2,7 @@
 
 ## Локальный запуск ResponseFlow
 
-Первый сценарий M1 позволяет менеджеру войти, создать клиента и проект, назначить ответственного, импортировать синтетическую переписку и получить карточку обращения без содержательного ответа с проверяемыми основаниями.
+Первый сценарий M1 позволяет менеджеру войти, создать клиента и проект, назначить ответственного, импортировать синтетическую переписку, запустить анализ, разобрать карточки трёх типов и сохранить решения. Эксплуатация, диагностика, резервное копирование и восстановление описаны в [runbook AF-021](docs/experiment/af-021-operations.md).
 
 Понадобятся Docker Compose, uv с Python 3.14.10 и Node.js 26.13.1 с npm. Команды ниже для PowerShell и выполняются из корня репозитория.
 
@@ -41,7 +41,7 @@ docker compose --env-file .env -f infra/compose.yml -f infra/temporal.compose.ym
 docker compose --env-file .env -f infra/compose.yml -f infra/temporal.compose.yml logs temporal-namespace
 ```
 
-Дождитесь создания namespace `default`. После применения прикладной миграции запустите worker и диспетчер в отдельных терминалах с тем же `.env` и `PYTHONPATH=backend/src`, что у API:
+Дождитесь создания namespace `default`. Temporal UI доступен на `http://127.0.0.1:8080` (сервис `temporal-ui`). После применения прикладной миграции запустите worker и диспетчер в отдельных терминалах с тем же `.env` и `PYTHONPATH=backend/src`, что у API:
 
 ```powershell
 uv run --project backend --frozen python -m actionflow.worker
@@ -64,6 +64,10 @@ uv run --project backend --frozen python scripts/evaluate_baseline.py
 
 Оценка выполняет детекторы заново в изолированной базе. [Методика и базовый результат](docs/experiment/af-020-baseline.md)
 
+По умолчанию используется локальная воспроизводимая baseline-модель; `cost_usd` намеренно равен `null`, а не нулю. Внешние LLM/embedding-провайдеры разрешены: заполните `OPENAI_API_KEY`, `OPENAI_MODEL` и при необходимости `OPENAI_BASE_URL`/`OPENAI_EMBEDDING_MODEL` в локальном `.env`, чтобы подключить выбранный адаптер. Карточка показывает описание, рекомендацию, основания, окружающую переписку и версии модели; повторный запуск сохраняет историю, а не создаёт дубликат. Действия менеджера, предложения переоткрытия/закрытия и история решений сохраняются в PostgreSQL.
+
+Для операционной диагностики используйте `python -m actionflow.ops doctor` (а также `run <run_id>`), `/api/v1/diagnostics` и Temporal UI. Резервное копирование, проверка восстановления и удаление данных описаны в [runbook AF-021](docs/experiment/af-021-operations.md).
+
 Чтобы включить проверку перезапуска worker, таймаута и ограниченных повторов на тестовом сервере Temporal, задайте `$env:ACTIONFLOW_TEST_TEMPORAL = '1'` перед `.\scripts\check.ps1`. При первом запуске SDK загружает тестовый сервер.
 
 Проверки из корня репозитория:
@@ -71,6 +75,14 @@ uv run --project backend --frozen python scripts/evaluate_baseline.py
 ```powershell
 .\scripts\check.ps1
 ```
+
+Проверка резервной копии и восстановления прикладной БД и Temporal:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\verify-backup.ps1 -RequireTemporal
+```
+
+Перед копией остановите API, worker, dispatcher и Temporal server; подробный порядок, RPO/RTO, диагностика и удаление данных — в [runbook AF-021](docs/experiment/af-021-operations.md).
 
 ## Краткое описание
 
