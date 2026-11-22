@@ -223,6 +223,8 @@ def check_analysis(browser, sessions, project_id, monkeypatch):
             analysis_input.prepare_input(sessions, created["run_id"], finalize=False)
             activities = AnalysisActivities(sessions)
             activities.detect(created["run_id"])
+            activities.detect_commitment(created["run_id"])
+            activities.detect_complaint(created["run_id"])
             activities.finalize(created["run_id"])
 
     async def scenario():
