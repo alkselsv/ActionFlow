@@ -116,6 +116,45 @@ def test_customer_message_is_not_a_vedita_answer_and_multiple_questions_are_kept
     )
 
 
+@pytest.mark.parametrize(
+    ("question", "answer", "is_open"),
+    [
+        ("Когда будет готова демонстрация?", "Покажем завтра в 11:00.", False),
+        ("Когда будет готова демонстрация?", "Завтра в 11:00.", False),
+        ("Когда будет готова демонстрация?", "Уточню завтра в 11:00.", True),
+        ("Когда будет готова демонстрация?", "Возможно, завтра в 11:00.", True),
+        ("Пришлите демонстрацию.", "Покажем завтра в 11:00.", True),
+    ],
+)
+def test_concrete_schedule_answers_only_a_question_about_timing(
+    question, answer, is_open
+):
+    result = LocalBaselineDetector().detect(
+        request(message(1, "customer", question), message(2, "vedita", answer))
+    )
+    assert bool(result.candidates) is is_open
+
+
+def test_blocked_operation_is_an_open_request_with_linked_escalation():
+    blocked = message(1, "customer", "Интеграция снова не передаёт заказы.")
+    reaction = message(2, "vedita", "Проверяем журналы, вернусь с результатом.")
+    escalation = message(
+        3, "customer", "Если не восстановите обмен, мы остановим работы."
+    )
+    [item] = (
+        LocalBaselineDetector()
+        .detect(request(blocked, reaction, escalation))
+        .candidates
+    )
+    assert item.subject.anchor_message_id == blocked.message_id
+    assert item.explicit_risk
+    assert [evidence.message_id for evidence in item.evidence] == [
+        blocked.message_id,
+        reaction.message_id,
+        escalation.message_id,
+    ]
+
+
 def test_attachment_response_is_flagged_as_incomplete():
     question = message(1, "customer", "Пришлите, пожалуйста, отчёт.")
     attachment = message(
@@ -146,9 +185,7 @@ def test_media_only_message_without_text_is_not_guessed():
 def test_validation_accepts_valid_evidence_and_rejects_foreign_or_bad_quote():
     anchor = message(1, "customer", "Когда будет отчёт?")
     response = message(2, "vedita", "Проверю.")
-    valid = DetectorResult(
-        finding_type="unanswered", candidates=[candidate(anchor)]
-    )
+    valid = DetectorResult(finding_type="unanswered", candidates=[candidate(anchor)])
     assert validate_result(valid, (anchor, response))[0].status == "valid"
 
     foreign = valid.model_copy(deep=True)

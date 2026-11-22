@@ -69,6 +69,7 @@ def evaluate_unanswered(
             finding_type="unanswered",
             as_of=run.as_of,
             sla_state=sla.state,
+            explicit_risk=candidate.explicit_risk,
             limitations=limitations,
         )
     )

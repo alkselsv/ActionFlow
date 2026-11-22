@@ -188,7 +188,7 @@ def test_saved_unanswered_card_evidence_and_idempotent_runs(tmp_path, monkeypatc
         assert run["stage"] == "unanswered_ready"
         assert run["settings_version_id"] == settings_id
         assert run["detector"]["model_id"] == "local-baseline-unanswered-v1"
-        assert run["detector"]["prompt_version"] == "unanswered-rules-v1"
+        assert run["detector"]["prompt_version"] == LocalBaselineDetector.prompt_version
         assert run["detector"]["schema_version"] == "detector_result.v1"
         assert run["cost_usd"] is None
         assert run["usage"]["cost_usd"] is None

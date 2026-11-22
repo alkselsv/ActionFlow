@@ -12,6 +12,7 @@ type Run = {
   as_of: string;
   period_start: string;
   period_end: string;
+  created_at: string;
   apply_to_queue: boolean;
   settings_version_id: string | null;
   input_hash: string | null;
@@ -36,6 +37,14 @@ type Run = {
     parameters: Record<string, unknown> | null; duration_ms: number | null;
   } | null;
 };
+type RunInput = Pick<Run, "period_start" | "period_end" | "as_of" | "apply_to_queue"> & {
+  settings_version_id?: string | null;
+};
+
+function runLabel(run: Run) {
+  const date = (value: string) => new Date(value).toLocaleString();
+  return `${date(run.period_start)} — ${date(run.period_end)} · запуск ${date(run.created_at)} · ${run.run_id.slice(0, 8)}`;
+}
 type InputPage = {
   items: { message_id: string; revision_id: string; role: string; participant_side: string; revision: { text: string; revision_no: number } }[];
   next_cursor: string | null;
@@ -162,14 +171,10 @@ export function AnalysisPreparation({ projectId, onExpired, onCompleted }: {
     setPollAttempt((attempt) => attempt + 1);
   }
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function start(payload: RunInput) {
     setBusy(true);
     setError("");
     try {
-      const form = new FormData(event.currentTarget);
-      const date = (key: string) => new Date(String(form.get(key))).toISOString();
-      const payload = { period_start: date("period_start"), period_end: date("period_end"), as_of: date("as_of"), apply_to_queue: true };
       const body = JSON.stringify(payload);
       if (!retry.current || retry.current.body !== body) retry.current = { key: crypto.randomUUID(), body };
       const created = await request<{ run_id: string }>(projectPath, payload, { "Idempotency-Key": retry.current.key });
@@ -182,6 +187,16 @@ export function AnalysisPreparation({ projectId, onExpired, onCompleted }: {
     } finally {
       setBusy(false);
     }
+  }
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const date = (key: string) => new Date(String(form.get(key))).toISOString();
+    void start({
+      period_start: date("period_start"), period_end: date("period_end"),
+      as_of: date("as_of"), apply_to_queue: true,
+    });
   }
 
   async function showInput(cursor?: string) {
@@ -243,10 +258,15 @@ export function AnalysisPreparation({ projectId, onExpired, onCompleted }: {
         if (item) selectRun(item);
       }}>
       <option value="">Выбрать запуск</option>
-      {history.map((item) => <option key={item.run_id} value={item.run_id}>{new Date(item.as_of).toLocaleString()} · {item.run_id}</option>)}
+      {history.map((item) => <option key={item.run_id} value={item.run_id}>{runLabel(item)}</option>)}
     </select></label>}
     {run && <article>
       <p role="status">{statusLabels[run.status]}{stage ? ` · ${stage}` : ""} · {run.run_id}</p>
+      {(run.status === "succeeded" || run.status === "failed") && <button type="button" className="quiet" disabled={busy}
+        onClick={() => void start({
+          period_start: run.period_start, period_end: run.period_end, as_of: run.as_of,
+          apply_to_queue: run.apply_to_queue, settings_version_id: run.settings_version_id,
+        })}>Повторить с тем же периодом</button>}
       {run.error_code && <p role="alert">{errors[run.error_code] ?? "Не удалось выполнить анализ."}
         {run.retryable && " После проверки окружения можно создать новый запуск."}</p>}
       {run.limitations && <>
@@ -270,7 +290,7 @@ export function AnalysisPreparation({ projectId, onExpired, onCompleted }: {
           <label>Сравнить с запуском<select key={runId} onChange={(event) => void showComparison(event.target.value)}>
             <option value="">Выбрать запуск</option>
             {comparisonRuns.map((item) =>
-              <option key={item.run_id} value={item.run_id}>{item.run_id}</option>)}
+              <option key={item.run_id} value={item.run_id}>{runLabel(item)}</option>)}
           </select></label>}
         {comparison && <section>
           <h4>Различия двух запусков</h4>

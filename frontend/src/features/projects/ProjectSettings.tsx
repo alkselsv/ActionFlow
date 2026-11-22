@@ -5,8 +5,9 @@ const weekdays = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 const presets = { north: 60, south: 120 };
 type Page = { items: ProjectSettings[]; next_cursor: string | null };
 
-export function ProjectSettingsForm({ project, onSaved, onExpired }: {
+export function ProjectSettingsForm({ project, participantRevision, onSaved, onExpired }: {
   project: Project;
+  participantRevision: number;
   onSaved: (settings: ProjectSettings) => void;
   onExpired: () => void;
 }) {
@@ -53,6 +54,28 @@ export function ProjectSettingsForm({ project, onSaved, onExpired }: {
   }
 
   useEffect(() => { void perform(load); }, []);
+
+  useEffect(() => {
+    if (!participantRevision || !loaded) return;
+    let active = true;
+    request<{ items: Participant[] }>(path + "/participants").then(({ items }) => {
+      if (!active) return;
+      setParticipants((draft) => {
+        const imported = new Map(items.map((item) => [item.source_author_id, item]));
+        const updated = draft.map((item) => {
+          const found = imported.get(item.source_author_id);
+          imported.delete(item.source_author_id);
+          return found ? { ...found, side: item.side } : item;
+        });
+        return [...updated, ...imported.values()];
+      });
+    }).catch((cause) => {
+      if (!active) return;
+      if (cause instanceof ApiError && cause.status === 401) onExpired();
+      else setError(errorMessage(cause));
+    });
+    return () => { active = false; };
+  }, [participantRevision, loaded, path]);
 
   function addParticipant() {
     setParticipants([...participants, { source_author_id: "", display_name: null, imported: false, side: "unknown" }]);

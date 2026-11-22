@@ -55,7 +55,7 @@ SLICES = (
         "15T10:05",
         (
             ("complaint", 1, (1, 2, 3)),
-            ("unanswered", 3, (3, 4), "met", "15T07:13", "15T06:35"),
+            ("unanswered", 3, (3, 4, 6), "met", "15T07:13", "15T06:35"),
             ("commitment", 4, (4, 6)),
         ),
     ),
@@ -93,7 +93,7 @@ SLICES = (
             ("commitment", 2, (2,)),
         ),
     ),
-    ("holdout", "s-001", "15T06:30", (("commitment", 3, (3,)),)),
+    ("holdout", "s-001", "15T06:30", (("commitment", 2, (2, 3)),)),
 )
 
 
@@ -186,12 +186,25 @@ def score_slice(sessions, run_id, external_ids, expected):
                 FindingObservation, FindingObservation.candidate_id == Candidate.id
             )
             .where(Candidate.run_id == run_id)
-            .order_by(Candidate.candidate_key)
         )
-        for candidate, observation in rows:
+
+        def evidence_order(row):
+            candidate, observation = row
+            evidence_ids = tuple(
+                sorted(
+                    ids.get(item["message_id"], -1)
+                    for item in candidate.raw_payload["evidence"]
+                )
+            )
+            return (observation is None, -len(set(evidence_ids)), evidence_ids)
+
+        for candidate, observation in sorted(rows, key=evidence_order):
             metrics = totals[candidate.finding_type]
             if candidate.validation_status != "valid":
                 metrics["invalid"] += 1
+                continue
+            if observation is None:
+                # A later update can replace the same card's observation in this run.
                 continue
             if observation is not None and observation.commitment_status in {
                 "fulfilled",

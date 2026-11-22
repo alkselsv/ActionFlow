@@ -40,6 +40,7 @@ function Projects({ onExpired }: { onExpired: () => void }) {
   const [next, setNext] = useState<string | null>(null);
   const [selected, setSelected] = useState<Project | null>(null);
   const [selectionRevision, setSelectionRevision] = useState(0);
+  const [participantRevision, setParticipantRevision] = useState(0);
   const [queueRevision, setQueueRevision] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -101,6 +102,7 @@ function Projects({ onExpired }: { onExpired: () => void }) {
         attachments_present: number; system_events: number; uncertain_revisions: number; unresolved_replies: number;
       }>(`/projects/${selected.id}/messages/import`, file, uploadKey.current ??= crypto.randomUUID());
       uploadKey.current = null;
+      setParticipantRevision((revision) => revision + 1);
       setMessageHistory(null);
       setImportReport([
         `Новые: ${report.imported}, обновлены: ${report.updated}, пропущены: ${report.skipped}.`,
@@ -148,7 +150,7 @@ function Projects({ onExpired }: { onExpired: () => void }) {
         </form>
       </section>
     </div>
-    {selected && <ProjectSettingsForm key={selected.id + ":" + selectionRevision} project={selected} onExpired={onExpired} onSaved={(settings) => {
+    {selected && <ProjectSettingsForm key={selected.id + ":" + selectionRevision} project={selected} participantRevision={participantRevision} onExpired={onExpired} onSaved={(settings) => {
       setSelected((project) => project?.id === selected.id
         ? { ...project, manager_name: settings.manager_name, settings_version: settings }
         : project);
