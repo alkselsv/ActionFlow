@@ -1,0 +1,227 @@
+{
+  "synthetic": true,
+  "description": "Synthetic conversations for the AF-024 Cognee source and lifecycle check. No real client data.",
+  "projects": [
+    {
+      "project_id": "alpha",
+      "chat_id": "chat-alpha",
+      "name": "Synthetic estimate project",
+      "participants": [
+        {
+          "participant_id": "cust-alpha-sam",
+          "display_name": "Sam",
+          "side": "customer"
+        },
+        {
+          "participant_id": "emp-alpha-alex",
+          "display_name": "Alex",
+          "side": "employee"
+        }
+      ],
+      "messages": [
+        {
+          "message_id": "alpha-m1",
+          "revision": 1,
+          "author_id": "cust-alpha-sam",
+          "author_name": "Sam",
+          "side": "customer",
+          "sent_at": "2026-09-14T09:00:00Z",
+          "available_at": "2026-09-14T09:00:30Z",
+          "edited_at": null,
+          "deleted_at": null,
+          "reply_to_message_id": null,
+          "text": "Can you send the corrected estimate by Friday?"
+        },
+        {
+          "message_id": "alpha-m2",
+          "revision": 1,
+          "author_id": "emp-alpha-alex",
+          "author_name": "Alex",
+          "side": "employee",
+          "sent_at": "2026-09-14T09:05:00Z",
+          "available_at": "2026-09-14T09:05:30Z",
+          "edited_at": null,
+          "deleted_at": null,
+          "reply_to_message_id": "alpha-m1",
+          "text": "Yes, I will send the corrected estimate by Friday 12:00."
+        },
+        {
+          "message_id": "alpha-m2",
+          "revision": 2,
+          "author_id": "emp-alpha-alex",
+          "author_name": "Alex",
+          "side": "employee",
+          "sent_at": "2026-09-14T09:05:00Z",
+          "available_at": "2026-09-14T09:20:30Z",
+          "edited_at": "2026-09-14T09:20:00Z",
+          "deleted_at": null,
+          "reply_to_message_id": "alpha-m1",
+          "text": "Yes, I will send the corrected estimate by Friday 15:00."
+        },
+        {
+          "message_id": "alpha-m3",
+          "revision": 1,
+          "author_id": "emp-alpha-alex",
+          "author_name": "Alex",
+          "side": "employee",
+          "sent_at": "2026-09-15T08:00:00Z",
+          "available_at": "2026-09-15T08:00:30Z",
+          "edited_at": null,
+          "deleted_at": null,
+          "reply_to_message_id": "alpha-m2",
+          "text": "I need to move the estimate to Monday 12:00."
+        },
+        {
+          "message_id": "alpha-m4",
+          "revision": 1,
+          "author_id": "emp-alpha-alex",
+          "author_name": "Alex",
+          "side": "employee",
+          "sent_at": "2026-09-15T09:00:00Z",
+          "available_at": "2026-09-15T09:00:30Z",
+          "edited_at": null,
+          "deleted_at": null,
+          "reply_to_message_id": "alpha-m2",
+          "text": "The customer cancelled the estimate request; the promise is cancelled."
+        },
+        {
+          "message_id": "alpha-m5",
+          "revision": 1,
+          "author_id": "cust-alpha-sam",
+          "author_name": "Sam",
+          "side": "customer",
+          "sent_at": "2026-09-16T10:00:00Z",
+          "available_at": "2026-09-16T10:00:30Z",
+          "edited_at": null,
+          "deleted_at": null,
+          "reply_to_message_id": "alpha-m4",
+          "text": "We received the estimate late; this was a problem."
+        },
+        {
+          "message_id": "alpha-m6",
+          "revision": 1,
+          "author_id": "emp-alpha-alex",
+          "author_name": "Alex",
+          "side": "employee",
+          "sent_at": "2026-09-14T09:06:00Z",
+          "available_at": "2026-09-14T09:06:30Z",
+          "edited_at": null,
+          "deleted_at": "2026-09-15T12:00:00Z",
+          "reply_to_message_id": null,
+          "text": "Temporary draft: the old estimate amount was 1000."
+        }
+      ]
+    },
+    {
+      "project_id": "beta",
+      "chat_id": "chat-beta",
+      "name": "Synthetic contract project",
+      "participants": [
+        {
+          "participant_id": "cust-beta-sam",
+          "display_name": "Sam",
+          "side": "customer"
+        },
+        {
+          "participant_id": "emp-beta-alex",
+          "display_name": "Alex",
+          "side": "employee"
+        }
+      ],
+      "messages": [
+        {
+          "message_id": "beta-m1",
+          "revision": 1,
+          "author_id": "cust-beta-sam",
+          "author_name": "Sam",
+          "side": "customer",
+          "sent_at": "2026-09-14T09:00:00Z",
+          "available_at": "2026-09-14T09:00:30Z",
+          "edited_at": null,
+          "deleted_at": null,
+          "reply_to_message_id": null,
+          "text": "Can you send the signed contract by Friday?"
+        },
+        {
+          "message_id": "beta-m2",
+          "revision": 1,
+          "author_id": "emp-beta-alex",
+          "author_name": "Alex",
+          "side": "employee",
+          "sent_at": "2026-09-14T09:10:00Z",
+          "available_at": "2026-09-14T09:10:30Z",
+          "edited_at": null,
+          "deleted_at": null,
+          "reply_to_message_id": "beta-m1",
+          "text": "I will send the signed contract by Thursday 17:00."
+        },
+        {
+          "message_id": "beta-m3",
+          "revision": 1,
+          "author_id": "emp-beta-alex",
+          "author_name": "Alex",
+          "side": "employee",
+          "sent_at": "2026-09-15T08:30:00Z",
+          "available_at": "2026-09-15T08:30:30Z",
+          "edited_at": null,
+          "deleted_at": null,
+          "reply_to_message_id": "beta-m2",
+          "text": "The signed contract was sent on Wednesday."
+        },
+        {
+          "message_id": "beta-m4",
+          "revision": 1,
+          "author_id": "cust-beta-sam",
+          "author_name": "Sam",
+          "side": "customer",
+          "sent_at": "2026-09-16T10:00:00Z",
+          "available_at": "2026-09-16T10:00:30Z",
+          "edited_at": null,
+          "deleted_at": null,
+          "reply_to_message_id": "beta-m3",
+          "text": "The contract arrived late; we need a new date."
+        }
+      ]
+    },
+    {
+      "project_id": "lifecycle",
+      "chat_id": "chat-lifecycle",
+      "name": "Synthetic lifecycle fixture",
+      "participants": [
+        {
+          "participant_id": "emp-lifecycle-alex",
+          "display_name": "Alex",
+          "side": "employee"
+        }
+      ],
+      "messages": [
+        {
+          "message_id": "life-m1",
+          "revision": 1,
+          "author_id": "emp-lifecycle-alex",
+          "author_name": "Alex",
+          "side": "employee",
+          "sent_at": "2026-09-14T10:00:00Z",
+          "available_at": "2026-09-14T10:00:30Z",
+          "edited_at": null,
+          "deleted_at": null,
+          "reply_to_message_id": null,
+          "text": "I will send the estimate by Friday."
+        },
+        {
+          "message_id": "life-m1",
+          "revision": 2,
+          "author_id": "emp-lifecycle-alex",
+          "author_name": "Alex",
+          "side": "employee",
+          "sent_at": "2026-09-14T10:00:00Z",
+          "available_at": "2026-09-14T10:10:30Z",
+          "edited_at": "2026-09-14T10:10:00Z",
+          "deleted_at": null,
+          "reply_to_message_id": null,
+          "text": "I will send the estimate by Monday."
+        }
+      ]
+    }
+  ]
+}
