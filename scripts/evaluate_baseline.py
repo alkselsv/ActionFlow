@@ -93,7 +93,7 @@ SLICES = (
             ("commitment", 2, (2,)),
         ),
     ),
-    ("holdout", "s-001", "15T06:30", (("commitment", 3, (3,)),)),
+    ("holdout", "s-001", "15T06:30", (("commitment", 2, (2, 3)),)),
 )
 
 
