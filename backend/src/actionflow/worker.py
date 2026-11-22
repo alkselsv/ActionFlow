@@ -1,13 +1,28 @@
 import asyncio
+import logging
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import suppress
 
+from sqlalchemy.exc import SQLAlchemyError
 from temporalio.client import Client
 from temporalio.worker import Worker
 
 from actionflow.config import Settings
+from actionflow.operations import record_worker_heartbeat
 from actionflow.persistence.database import database
 from actionflow.temporal.activities import AnalysisActivities
 from actionflow.temporal.workflow import AnalysisWorkflow
+
+logger = logging.getLogger(__name__)
+
+
+async def heartbeat_loop(sessions, queue: str) -> None:
+    while True:
+        try:
+            await asyncio.to_thread(record_worker_heartbeat, sessions, queue)
+        except SQLAlchemyError as failure:  # pragma: no cover - operational path
+            logger.warning("worker_heartbeat_failed: %s", type(failure).__name__)
+        await asyncio.sleep(10)
 
 
 def analysis_worker(client, sessions, queue, executor, detector=None):
@@ -36,12 +51,18 @@ async def main():
         settings.temporal_address, namespace=settings.temporal_namespace
     )
     engine, sessions = database(settings.database_url)
+    heartbeat = asyncio.create_task(
+        heartbeat_loop(sessions, settings.temporal_task_queue)
+    )
     try:
         with ThreadPoolExecutor(max_workers=4) as executor:
             await analysis_worker(
                 client, sessions, settings.temporal_task_queue, executor
             ).run()
     finally:
+        heartbeat.cancel()
+        with suppress(asyncio.CancelledError):
+            await heartbeat
         engine.dispose()
 
 

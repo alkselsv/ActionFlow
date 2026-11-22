@@ -175,6 +175,15 @@ docs/
 
 Четыре действия `confirm`, `reject`, `snooze` и `close` меняют статус карточки. `confirm` из `rejected` требует открытое предложение `review`, из `closed` — `reopen`; для `snoozed` открытое предложение `review` принимается вместе с подтверждением. `close` принимает открытые предложения закрытия. Предложения: `close` — завершить ситуацию, `review` — пересмотреть отклонение или вернуться к отложенной карточке, `reopen` — переоткрыть закрытую; статусы `open`, `accepted`, `dismissed`. `dismiss_proposal` — обработка предложения системы, а не пятое действие менеджера: статус карточки сохраняется. При несовпадении `expected_version` — `409 stale_finding` с текущей версией; состояние не меняется. Повтор с тем же `Idempotency-Key` и телом возвращает сохранённый ответ с `Idempotent-Replayed: true`; другое тело — `409 idempotency_conflict`. Ответ содержит новую версию карточки, предложения и записи истории.
 
+### Диагностика эксплуатации
+
+| Метод и путь | Вход | Результат | Ошибки |
+| --- | --- | --- | --- |
+| `GET /diagnostics` | `probe_provider?` | БД, worker heartbeat, режим провайдера, политика логов | `503` |
+| `GET /analyses/{run_id}/diagnostics` | `probe_provider?` | состояние/стадия/ошибка запуска, outbox, worker, провайдер | `404`, `503` |
+
+Worker обновляет `worker_heartbeat` не реже чем раз в 10 секунд; heartbeat старше 30 секунд считается недоступным. `probe_provider=true` выполняет только запрос списка моделей к настроенному OpenAI-совместимому провайдеру и не передаёт текст переписки. Локальный baseline не делает сетевых вызовов.
+
 ## Воспроизводимый вход анализа
 
 `analysis_run` фиксирует:
@@ -311,6 +320,7 @@ Dispatcher — отдельный процесс с циклом PostgreSQL, б�
 | --- | --- |
 | `app_user` | `id`, `login unique`, `password_hash`, `created_at` |
 | `session` | `id`, `user_id`, `token_hash unique`, `expires_at`, `last_used_at` |
+| `worker_heartbeat` | `name` PK, `task_queue`, `host`, `started_at`, `last_seen_at`; operational metadata без переписки и секретов |
 | `client` | `id`, `name` |
 | `project` | `id`, `client_id`, `name`, `manager_name`, `created_at` |
 | `chat` | `id`, `project_id unique`, `source`, `external_id`, `name`, `type`; `unique(source, external_id)` |
@@ -340,7 +350,7 @@ Dispatcher — отдельный процесс с циклом PostgreSQL, б�
 
 Идемпотентность действий менеджера хранится в `manager_action` (`idempotency_key unique`, `request_hash`, `response_body`): повтор с тем же ключом и телом возвращает сохранённый ответ, другое тело даёт конфликт. Импорт и запуск анализа используют собственные записи с `idempotency_key` и `request_hash`.
 
-Индексы: очередь `(project_id, status, priority, updated_at DESC)`, `(project_id, finding_type, status)`, `(project_id, sla_state, priority)`, `(project_id, finding_type, commitment_status)`, `(finding_id, created_at DESC)` для истории; `finding_proposal(finding_id, status)`, `manager_action(finding_id, created_at)`; `commitment(project_id, status)`, `commitment_event(commitment_id, at)`; `analysis_run(project_id, created_at DESC)`, `analysis_input_message(run_id)`; `candidate(run_id)`; `outbox_event(status, next_attempt_at)`; `session(expires_at)`. Уникальные ограничения — основной механизм идемпотентности при гонках.
+Индексы: очередь `(project_id, status, priority, updated_at DESC)`, `(project_id, finding_type, status)`, `(project_id, sla_state, priority)`, `(project_id, finding_type, commitment_status)`, `(finding_id, created_at DESC)` для истории; `finding_proposal(finding_id, status)`, `manager_action(finding_id, created_at)`, `worker_heartbeat(last_seen_at)`; `commitment(project_id, status)`, `commitment_event(commitment_id, at)`; `analysis_run(project_id, created_at DESC)`, `analysis_input_message(run_id)`; `candidate(run_id)`; `outbox_event(status, next_attempt_at)`; `session(expires_at)`. Уникальные ограничения — основной механизм идемпотентности при гонках.
 
 Миграции: Alembic, одна начальная ревизия и далее по одной на изменение; `alembic upgrade head` — явная команда, не автоматически при старте API. Тесты применяют миграции на пустую БД и проверяют откат последней ревизии в dev-контуре. Схема Temporal не входит в Alembic.
 
@@ -357,7 +367,7 @@ Dispatcher — отдельный процесс с циклом PostgreSQL, б�
 | Решения | Четыре действия, предложения переоткрытия/пересмотра, stale `409`, повтор ключа, новые основания после закрытия |
 | Temporal | Падение dispatcher между commit и start; повторный start; убийство worker; retry и non-retryable; постоянная ошибка |
 | Сравнение | Одинаковый `input_hash`; разные настройки помечены `comparable=false`; решения менеджера не меняются |
-| Восстановление | Повтор dispatcher после сбоя; повторный запуск анализа; миграции на пустой БД; восстановление дампа в #19; зависший `running` выявляется по workflow history и переводится в `failed` вручную в #19 |
+| Восстановление | Повтор dispatcher после сбоя; повторный запуск анализа; миграции на пустой БД; backup/restore прикладной БД и Temporal; worker heartbeat; зависший `running` выявляется по workflow history и переводится в `failed` вручную в #19 |
 
 Логи структурированы и содержат `request_id`, `run_id`, `workflow_id`, этап и код ошибки; текст переписки и секреты не логируются. `/ready` проверяет БД и Temporal; Temporal UI доступен локально.
 
