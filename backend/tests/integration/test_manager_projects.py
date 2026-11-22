@@ -223,6 +223,8 @@ def check_analysis(browser, sessions, project_id, monkeypatch):
             analysis_input.prepare_input(sessions, created["run_id"], finalize=False)
             activities = AnalysisActivities(sessions)
             activities.detect(created["run_id"])
+            activities.detect_commitment(created["run_id"])
+            activities.detect_complaint(created["run_id"])
             activities.finalize(created["run_id"])
 
     async def scenario():
@@ -245,7 +247,12 @@ def check_analysis(browser, sessions, project_id, monkeypatch):
     asyncio.run(scenario())
     status = browser.get(f"/api/v1/analyses/{created['run_id']}").json()
     assert status["status"] == "succeeded"
-    assert status["stage"] == "unanswered_ready"
+    assert status["stage"] == "findings_ready"
+    assert {kind: result["status"] for kind, result in status["detectors"].items()} == {
+        "unanswered": "succeeded",
+        "commitment": "succeeded",
+        "complaint": "succeeded",
+    }
     assert status["settings_version_id"] == prior_id
     assert status["limitations"]["message_count"] == 3
     assert status["limitations"]["missing_settings"] is False

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ApiError, errorMessage, request, type FindingCard, type FindingSummary } from "../../api/client";
 import { FindingDetails } from "../findings/FindingDetails";
 
+type DetectorStatus = "succeeded" | "failed" | "not_run" | "pending";
 type Run = {
   run_id: string;
   status: "pending" | "queued" | "running" | "succeeded" | "failed";
@@ -9,6 +10,8 @@ type Run = {
   error_code: string | null;
   retryable: boolean | null;
   as_of: string;
+  period_start: string;
+  period_end: string;
   apply_to_queue: boolean;
   settings_version_id: string | null;
   input_hash: string | null;
@@ -23,6 +26,9 @@ type Run = {
   finding_count: number | null;
   implemented_types: string[];
   cost_usd: number | null;
+  duration_seconds: number | null;
+  detectors: Record<string, {status: DetectorStatus; model?: string; duration_ms?: number; candidate_count?: number;
+    detector_version?: string; prompt_version?: string; schema_version?: string; usage?: {cost_usd: string | null}}>;
   usage: Record<string, unknown> | null;
   detector: {
     provider: string | null; model_id: string | null; detector_version: string | null;
@@ -33,6 +39,12 @@ type Run = {
 type InputPage = {
   items: { message_id: string; revision_id: string; role: string; participant_side: string; revision: { text: string; revision_no: number } }[];
   next_cursor: string | null;
+};
+type ComparedCandidate = {description: string; validity: string; sla_state: string | null; sla_due_at: string | null;
+  evidence: {role: string; message_id: string; revision_id: string; quote?: string | null}[]};
+type Comparison = {
+  before: Run; after: Run;
+  changes: {type: string; subject_kind: string; subject_id: string; before: ComparedCandidate[]; after: ComparedCandidate[]}[];
 };
 
 const statusLabels = {
@@ -48,6 +60,9 @@ const findingTypeLabels: Record<string, string> = {
   unanswered: "Обращение без ответа",
   commitment: "Обязательство Vedita",
   complaint: "Претензия клиента",
+};
+const detectorStatusLabels: Record<DetectorStatus, string> = {
+  succeeded: "готово", failed: "ошибка", not_run: "не выполнен", pending: "ожидает",
 };
 const errors: Record<string, string> = {
   analysis_input_too_large: "В срезе больше 50 000 сообщений. Сократите период.",
@@ -72,9 +87,11 @@ export function AnalysisPreparation({ projectId, onExpired, onCompleted }: {
   const [findings, setFindings] = useState<FindingSummary[]>([]);
   const [card, setCard] = useState<FindingCard | null>(null);
   const [error, setError] = useState("");
+  const [comparison, setComparison] = useState<Comparison | null>(null);
   const [busy, setBusy] = useState(false);
   const [pollAttempt, setPollAttempt] = useState(0);
   const retry = useRef<{ key: string; body: string } | null>(null);
+  const comparisonRequest = useRef(0);
   const projectPath = "/projects/" + projectId + "/analyses";
   const runId = run?.run_id;
   const status = run?.status;
@@ -101,6 +118,9 @@ export function AnalysisPreparation({ projectId, onExpired, onCompleted }: {
         const next = await request<Run>("/analyses/" + runId);
         if (!active) return;
         setRun(next);
+        if (next.status === "succeeded" || next.status === "failed") {
+          setHistory((items) => items.map((item) => item.run_id === next.run_id ? next : item));
+        }
         if (next.status !== "succeeded" && next.status !== "failed") timer = setTimeout(poll, 1200);
       } catch (cause) {
         if (active) handleError(cause);
@@ -111,7 +131,7 @@ export function AnalysisPreparation({ projectId, onExpired, onCompleted }: {
   }, [runId, status, pollAttempt]);
 
   useEffect(() => {
-    if (!runId || status !== "succeeded") {
+    if (!runId || (status !== "succeeded" && status !== "failed")) {
       setFindings([]);
       setCard(null);
       return;
@@ -132,6 +152,8 @@ export function AnalysisPreparation({ projectId, onExpired, onCompleted }: {
   }, [runId, status]);
 
   function selectRun(item: Run) {
+    comparisonRequest.current++;
+    setComparison(null);
     setPage(null);
     setError("");
     setFindings([]);
@@ -186,7 +208,24 @@ export function AnalysisPreparation({ projectId, onExpired, onCompleted }: {
     }
   }
 
+  async function showComparison(other: string) {
+    const requested = ++comparisonRequest.current;
+    setComparison(null);
+    setError("");
+    if (!runId || !other) return;
+    try {
+      const result = await request<Comparison>(`/analyses/${runId}/comparison?other=${encodeURIComponent(other)}`);
+      if (requested === comparisonRequest.current) setComparison(result);
+    } catch (cause) {
+      if (requested === comparisonRequest.current) handleError(cause);
+    }
+  }
+
   const stage = run ? stageLabels[run.stage] : null;
+  const comparisonRuns = run ? history.filter((item) =>
+    item.run_id !== runId && (item.status === "failed" || item.status === "succeeded") &&
+    item.as_of === run.as_of && item.period_start === run.period_start && item.period_end === run.period_end
+  ) : [];
   return <section className="panel settings">
     <h2>Запуск анализа</h2>
     <p>Кнопка запускает локальные детекторы обращений без ответа, обязательств Vedita и претензий клиента на зафиксированном входе. Внешние LLM и платные вызовы не выполняются.</p>
@@ -217,8 +256,46 @@ export function AnalysisPreparation({ projectId, onExpired, onCompleted }: {
         <p>{run.settings_version_id ? "Версия контекста и SLA: " + run.settings_version_id : "На момент оценки не было доступной версии контекста и SLA."}</p>
         {!page && <button className="quiet" disabled={busy} onClick={() => void showInput()}>Открыть сохранённый вход</button>}
       </>}
-      {run.status === "succeeded" && <>
+      {(run.status === "succeeded" || run.status === "failed") && <>
         <h3>Результат запуска</h3>
+        {run.status === "failed" && Object.values(run.detectors).some((item) => item.status === "succeeded") &&
+          <p role="status">Частичный результат. Сохранены результаты завершившихся детекторов.</p>}
+        <ul>{Object.entries(run.detectors).map(([type, detector]) => <li key={type}>
+          {findingTypeLabels[type] ?? type}: {detectorStatusLabels[detector.status]}
+          {detector.status === "succeeded" && ` · ${detector.candidate_count ?? 0} кандидатов · ${detector.duration_ms ?? "—"} мс · ${detector.model ?? "модель не указана"} · USD ${detector.usage?.cost_usd ?? "неизвестно"}`}
+          {detector.detector_version && <small> · детектор {detector.detector_version} · prompt {detector.prompt_version ?? "—"} · схема {detector.schema_version ?? "—"}</small>}
+        </li>)}</ul>
+        <p>Время запуска: {run.duration_seconds ?? "—"} с · стоимость: {run.cost_usd ?? "неизвестна"} USD.</p>
+        {comparisonRuns.length > 0 &&
+          <label>Сравнить с запуском<select key={runId} onChange={(event) => void showComparison(event.target.value)}>
+            <option value="">Выбрать запуск</option>
+            {comparisonRuns.map((item) =>
+              <option key={item.run_id} value={item.run_id}>{item.run_id}</option>)}
+          </select></label>}
+        {comparison && <section>
+          <h4>Различия двух запусков</h4>
+          <p>Версии настроек: {comparison.before.settings_version_id ?? "—"} → {comparison.after.settings_version_id ?? "—"}</p>
+          <ul>{Object.entries(comparison.before.detectors).map(([type, detector]) => <li key={type}>
+            {findingTypeLabels[type] ?? type}: {detectorStatusLabels[detector.status]} → {detectorStatusLabels[comparison.after.detectors[type].status]}
+          </li>)}</ul>
+          {comparison.changes.length === 0 && <p>Среди завершённых в обоих запусках детекторов различий в кандидатах и основаниях нет.</p>}
+          {comparison.changes.map((change) => <article key={`${change.type}:${change.subject_kind}:${change.subject_id}`}>
+            <h5>{findingTypeLabels[change.type] ?? change.type}</h5>
+            {[
+              { label: "Первый запуск", items: change.before, detector: comparison.before.detectors[change.type] },
+              { label: "Второй запуск", items: change.after, detector: comparison.after.detectors[change.type] },
+            ].map(({label, items, detector}) =>
+              <div key={label}><strong>{label} · {detectorStatusLabels[detector.status]}</strong>
+                {items.length === 0 && detector.status === "succeeded" && <p>Кандидатов нет.</p>}
+                {items.map((candidate, index) => <div key={index}>
+                  <p>{candidate.description} · {candidate.validity}{candidate.sla_state && ` · SLA ${candidate.sla_state} ${candidate.sla_due_at ?? ""}`}</p>
+                  <ul>{candidate.evidence.map((item, position) => <li key={position}>
+                    {item.quote ?? "Без цитаты"} · редакция {item.revision_id}
+                  </li>)}</ul>
+                </div>)}
+              </div>)}
+          </article>)}
+        </section>}
         <p>Доступны типы: {run.implemented_types.map((item) => findingTypeLabels[item] ?? item).join(", ")}. Кандидатов: {run.candidate_count ?? 0}; карточек: {run.finding_count ?? 0}; отклонено проверкой оснований: {run.invalid_candidate_count ?? 0}.</p>
         {!run.apply_to_queue && <p>Это сравнительный запуск: кандидаты сохранены, но карточки очереди не обновлялись.</p>}
         {run.detector && <p>Модель: {run.detector.model_id ?? "не указана"} · prompt {run.detector.prompt_version ?? "—"} · схема {run.detector.schema_version ?? "—"} · длительность {run.detector.duration_ms ?? "—"} мс · стоимость {run.cost_usd === null ? "неизвестна" : run.cost_usd}.</p>}

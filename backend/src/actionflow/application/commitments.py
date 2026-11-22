@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from datetime import datetime
-from decimal import Decimal
 from hashlib import sha256
 from time import perf_counter
 
@@ -10,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from actionflow.application.proposals import ensure_proposal
 from actionflow.application.rules import RuleResult, evaluate_commitment
+from actionflow.application.run_results import record_detector_result
 from actionflow.application.unanswered import load_detector_request
 from actionflow.detectors.contracts import (
     Candidate as CandidateModel,
@@ -435,7 +435,7 @@ def analyze_commitments(
         )
         if run is None:
             raise ValueError("Unknown analysis run")
-        if run.status in TERMINAL:
+        if run.status in TERMINAL or "commitment" in (run.limitations or {}):
             return CommitmentSummary(
                 candidate_count=run.candidate_count or 0,
                 finding_count=run.finding_count or 0,
@@ -475,7 +475,7 @@ def analyze_commitments(
         )
         if run is None:
             raise ValueError("Unknown analysis run")
-        if run.status in TERMINAL:
+        if run.status in TERMINAL or "commitment" in (run.limitations or {}):
             return CommitmentSummary(
                 candidate_count=run.candidate_count or 0,
                 finding_count=run.finding_count or 0,
@@ -491,12 +491,6 @@ def analyze_commitments(
         run.schema_version = detector.schema_version
         run.model_params = detector.model_params
         run.usage = result.usage.model_dump(mode="json")
-        run.cost_usd = (
-            Decimal(str(result.usage.cost_usd))
-            if result.usage.cost_usd is not None
-            else None
-        )
-        run.detector_duration_ms = duration_ms
         run.stage = "commitment_ready"
         input_revisions = {
             message.message_id: message.revision_id for message in request.messages
@@ -601,7 +595,9 @@ def analyze_commitments(
             "cost_known": result.usage.cost_usd is not None,
             "rejected_candidates": rejected,
         }
-        run.limitations = old_limitations
+        record_detector_result(
+            run, detector, result, duration_ms, old_limitations["commitment"]
+        )
 
     return CommitmentSummary(
         candidate_count=len(result.candidates),

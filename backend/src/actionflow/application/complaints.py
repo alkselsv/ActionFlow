@@ -1,12 +1,12 @@
 from dataclasses import dataclass
 from datetime import datetime
-from decimal import Decimal
 from time import perf_counter
 
 from pydantic import ValidationError
 from sqlalchemy import func, select
 
 from actionflow.application.rules import evaluate_complaint
+from actionflow.application.run_results import record_detector_result
 from actionflow.application.unanswered import (
     _store_evidence,
     _upsert_finding,
@@ -60,7 +60,7 @@ def analyze_complaints(
         )
         if run is None:
             raise ValueError("Unknown analysis run")
-        if run.status in TERMINAL:
+        if run.status in TERMINAL or "complaint" in (run.limitations or {}):
             return ComplaintSummary(
                 candidate_count=run.candidate_count or 0,
                 finding_count=run.finding_count or 0,
@@ -101,7 +101,7 @@ def analyze_complaints(
         )
         if run is None:
             raise ValueError("Unknown analysis run")
-        if run.status in TERMINAL:
+        if run.status in TERMINAL or "complaint" in (run.limitations or {}):
             return ComplaintSummary(
                 candidate_count=run.candidate_count or 0,
                 finding_count=run.finding_count or 0,
@@ -117,12 +117,6 @@ def analyze_complaints(
         run.schema_version = detector.schema_version
         run.model_params = detector.model_params
         run.usage = result.usage.model_dump(mode="json")
-        run.cost_usd = (
-            Decimal(str(result.usage.cost_usd))
-            if result.usage.cost_usd is not None
-            else None
-        )
-        run.detector_duration_ms = duration_ms
         run.stage = "complaints_ready"
         settings = (
             db.get(SettingsVersion, run.settings_version_id)
@@ -218,7 +212,9 @@ def analyze_complaints(
             "cost_known": result.usage.cost_usd is not None,
             "rejected_candidates": rejected,
         }
-        run.limitations = old_limitations
+        record_detector_result(
+            run, detector, result, duration_ms, old_limitations["complaint"]
+        )
 
     return ComplaintSummary(
         candidate_count=len(result.candidates),

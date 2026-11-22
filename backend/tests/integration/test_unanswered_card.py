@@ -1,4 +1,6 @@
+import asyncio
 import os
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -6,7 +8,11 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
+from temporalio import activity
+from temporalio.client import WorkflowFailureError
 from temporalio.exceptions import ApplicationError
+from temporalio.testing import WorkflowEnvironment
+from temporalio.worker import Worker
 
 from actionflow.api.app import create_app
 from actionflow.application import analysis_input
@@ -18,9 +24,12 @@ from actionflow.detectors.contracts import (
     Evidence,
 )
 from actionflow.detectors.local_baseline import LocalBaselineDetector
+from actionflow.dispatcher import dispatch_once
 from actionflow.persistence.database import database
 from actionflow.setup_manager import create_manager
 from actionflow.temporal.activities import AnalysisActivities
+from actionflow.temporal.workflow import AnalysisWorkflow
+from actionflow.worker import analysis_worker
 
 ORIGIN = {"Origin": "http://127.0.0.1:5173"}
 FIXTURES = Path(__file__).resolve().parents[3] / "data/fixtures/telegram"
@@ -117,7 +126,9 @@ def setup_project(browser):
     return project_id, settings_id
 
 
-def run_pipeline(browser, sessions, project_id, *, key, detector=None, apply_to_queue=True):
+def run_pipeline(
+    browser, sessions, project_id, *, key, detector=None, apply_to_queue=True
+):
     response = browser.post(
         f"/api/v1/projects/{project_id}/analyses",
         headers={**ORIGIN, "Idempotency-Key": key},
@@ -220,14 +231,14 @@ def test_saved_unanswered_card_evidence_and_idempotent_runs(tmp_path, monkeypatc
             f"/api/v1/projects/{project_id}/findings?priority=high&sla=breached"
         ).json()
         assert [item["id"] for item in queue["items"]] == [card_id]
-        counts = browser.get(
-            f"/api/v1/projects/{project_id}/findings/counts"
-        ).json()
+        counts = browser.get(f"/api/v1/projects/{project_id}/findings/counts").json()
         assert counts["open"] == 1
         assert counts["sla_breaches"] == 1
         assert counts["by_sla"]["breached"] == 1
 
-        candidates = browser.get(f"/api/v1/analyses/{run_id}/candidates").json()["items"]
+        candidates = browser.get(f"/api/v1/analyses/{run_id}/candidates").json()[
+            "items"
+        ]
         assert len(candidates) == 1
         assert candidates[0]["status"] == "valid"
         assert candidates[0]["evidence"][0]["role"] == "anchor"
@@ -243,9 +254,9 @@ def test_saved_unanswered_card_evidence_and_idempotent_runs(tmp_path, monkeypatc
 
         # A deliberate new run keeps the card identity and stores a new observation.
         second = run_pipeline(browser, sessions, project_id, key="unanswered-2")
-        second_findings = browser.get(
-            f"/api/v1/analyses/{second}/findings"
-        ).json()["items"]
+        second_findings = browser.get(f"/api/v1/analyses/{second}/findings").json()[
+            "items"
+        ]
         assert second_findings[0]["id"] == card_id
         card2 = browser.get(f"/api/v1/findings/{card_id}?run_id={second}").json()
         assert [item["run_id"] for item in card2["history"]] == [run_id, second]
@@ -278,9 +289,9 @@ def test_changed_settings_do_not_rewrite_previous_sla(tmp_path, monkeypatch):
     with TestClient(create_app(settings)) as browser:
         project_id, first_settings_id = setup_project(browser)
         first_run = run_pipeline(browser, sessions, project_id, key="sla-first")
-        card_id = browser.get(
-            f"/api/v1/analyses/{first_run}/findings"
-        ).json()["items"][0]["id"]
+        card_id = browser.get(f"/api/v1/analyses/{first_run}/findings").json()["items"][
+            0
+        ]["id"]
         first_card = browser.get(
             f"/api/v1/findings/{card_id}?run_id={first_run}"
         ).json()
@@ -342,7 +353,9 @@ def test_foreign_evidence_is_rejected_without_creating_a_card(tmp_path, monkeypa
         assert run["candidate_count"] == 1
         assert run["invalid_candidate_count"] == 1
         assert run["finding_count"] == 0
-        candidates = browser.get(f"/api/v1/analyses/{run_id}/candidates").json()["items"]
+        candidates = browser.get(f"/api/v1/analyses/{run_id}/candidates").json()[
+            "items"
+        ]
         assert candidates[0]["status"] == "invalid"
         assert any(
             "evidence_not_in_input" in item
@@ -404,3 +417,166 @@ def test_invalid_model_output_is_non_retryable(tmp_path, monkeypatch):
             AnalysisActivities(sessions, InvalidOutputDetector()).detect(run_id)
         assert raised.value.type == "detector_invalid_output"
         assert raised.value.non_retryable is True
+
+
+@pytest.mark.skipif(
+    os.environ.get("ACTIONFLOW_TEST_TEMPORAL") != "1",
+    reason="Set ACTIONFLOW_TEST_TEMPORAL=1 to start the Temporal test server",
+)
+def test_full_analysis_preserves_partial_results_and_manager_actions(
+    tmp_path, monkeypatch
+):
+    settings, sessions = setup_db(tmp_path, monkeypatch)
+
+    async def scenario():
+        async with await WorkflowEnvironment.start_time_skipping() as temporal:
+            with (
+                TestClient(create_app(settings)) as browser,
+                ThreadPoolExecutor(4) as executor,
+            ):
+                project_id, settings_id = setup_project(browser)
+                path = f"/api/v1/projects/{project_id}/analyses"
+                payload = {
+                    "period_start": "2026-09-14T00:00:00Z",
+                    "period_end": "2026-09-16T00:00:00Z",
+                    "as_of": (datetime.now(UTC) + timedelta(minutes=10)).isoformat(),
+                }
+                queue = "full-analysis"
+
+                async def connect():
+                    return temporal.client
+
+                async def start(key, **overrides):
+                    response = browser.post(
+                        path,
+                        json={**payload, **overrides},
+                        headers={**ORIGIN, "Idempotency-Key": key},
+                    )
+                    assert response.status_code == 202
+                    result = response.json()
+                    assert await dispatch_once(sessions, connect, queue)
+                    return result["run_id"], temporal.client.get_workflow_handle(
+                        result["workflow_id"]
+                    )
+
+                activities = AnalysisActivities(sessions)
+                waiting = asyncio.Event()
+                release = asyncio.Event()
+
+                @activity.defn(name="detect_unanswered")
+                async def acknowledge_after_retry(run_id: str):
+                    await asyncio.to_thread(activities.detect, run_id)
+                    if activity.info().attempt == 1:
+                        raise ApplicationError("Completion was not delivered")
+
+                @activity.defn(name="detect_commitment")
+                async def interrupted(run_id: str):
+                    waiting.set()
+                    await release.wait()
+                    raise ApplicationError("Worker restarted")
+
+                worker = Worker(
+                    temporal.client,
+                    task_queue=queue,
+                    workflows=[AnalysisWorkflow],
+                    max_cached_workflows=0,
+                    activities=[
+                        activities.prepare,
+                        acknowledge_after_retry,
+                        interrupted,
+                    ],
+                    activity_executor=executor,
+                )
+                async with worker:
+                    first, handle = await start("partial")
+                    await asyncio.wait_for(waiting.wait(), 15)
+                    stop = asyncio.create_task(worker.shutdown())
+                    await asyncio.sleep(0)
+                    release.set()
+                    await stop
+
+                @activity.defn(name="detect_commitment")
+                async def provider_failure(run_id: str):
+                    raise ApplicationError(
+                        "Provider refused", type="provider_error", non_retryable=True
+                    )
+
+                async with Worker(
+                    temporal.client,
+                    task_queue=queue,
+                    workflows=[AnalysisWorkflow],
+                    max_cached_workflows=0,
+                    activities=[provider_failure, activities.fail],
+                    activity_executor=executor,
+                ):
+                    with pytest.raises(WorkflowFailureError):
+                        await asyncio.wait_for(handle.result(), 20)
+                status = browser.get(f"/api/v1/analyses/{first}").json()
+                assert status["status"] == "failed"
+                assert status["error_code"] == "provider_error"
+                assert {
+                    kind: item["status"] for kind, item in status["detectors"].items()
+                } == {
+                    "unanswered": "succeeded",
+                    "commitment": "failed",
+                    "complaint": "not_run",
+                }
+                [finding] = browser.get(f"/api/v1/analyses/{first}/findings").json()[
+                    "items"
+                ]
+                card_path = f"/api/v1/findings/{finding['id']}"
+                response = browser.post(
+                    f"{card_path}/actions",
+                    headers={**ORIGIN, "Idempotency-Key": "confirm-before-retry"},
+                    json={"action": "confirm", "expected_version": finding["version"]},
+                )
+                assert response.status_code == 200
+                new_settings = update_response_sla(
+                    browser, project_id, settings_id, 240
+                )
+                async with analysis_worker(temporal.client, sessions, queue, executor):
+                    second, handle = await start("retry")
+                    await asyncio.wait_for(handle.result(), 20)
+                    evaluation, handle = await start("evaluation", apply_to_queue=False)
+                    await asyncio.wait_for(handle.result(), 20)
+                response = browser.get(
+                    f"/api/v1/analyses/{first}/comparison", params={"other": second}
+                )
+                assert response.status_code == 200, response.text
+                comparison = response.json()
+                assert comparison["before"]["settings_version_id"] == settings_id
+                assert comparison["after"]["settings_version_id"] == new_settings
+                assert all(
+                    item["status"] == "succeeded"
+                    for item in comparison["after"]["detectors"].values()
+                )
+                [change] = comparison["changes"]
+                assert change["type"] == "unanswered"
+                assert (
+                    change["before"][0]["sla_due_at"]
+                    != change["after"][0]["sla_due_at"]
+                )
+                response = browser.get(
+                    f"/api/v1/analyses/{second}/comparison",
+                    params={"other": evaluation},
+                )
+                assert response.status_code == 200
+                assert response.json()["changes"] == []
+                second_findings = browser.get(
+                    f"/api/v1/analyses/{second}/findings"
+                ).json()["items"]
+                assert (
+                    len(
+                        [
+                            item
+                            for item in second_findings
+                            if item["id"] == finding["id"]
+                        ]
+                    )
+                    == 1
+                )
+                card = browser.get(card_path).json()
+                assert card["status"] == "confirmed"
+                assert len(card["actions"]) == 1
+
+    asyncio.run(scenario())
