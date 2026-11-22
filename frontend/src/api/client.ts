@@ -38,6 +38,84 @@ export type Participant = {
   imported: boolean;
   side: Side;
 };
+export type FindingSummary = {
+  id: string;
+  project_id: string;
+  type: "unanswered";
+  status: "new" | "confirmed" | "rejected" | "snoozed" | "closed";
+  priority: "low" | "medium" | "high" | "unknown";
+  description: string;
+  confidence: number;
+  sla: { due_at: string | null; state: string };
+  anchor_message_id: string;
+  current_run_id: string | null;
+  run_id: string | null;
+  version: number;
+  updated_at: string;
+};
+export type FindingMessage = {
+  message_id: string;
+  revision_id: string;
+  external_id: string;
+  role: string | null;
+  quote: string | null;
+  text: string;
+  sent_at: string;
+  author: { id: string | null; name: string | null; side: Side | null };
+  source_type: "message" | "service";
+  attachments: Record<string, unknown>;
+  reply_to_external_id: string | null;
+};
+export type FindingCard = FindingSummary & {
+  recommendation: string;
+  priority_reason: Record<string, unknown>;
+  subject: {
+    kind: string;
+    id: string;
+    anchor_message_id: string;
+    anchor_revision_id: string;
+  };
+  limitations: string[];
+  candidate: {
+    candidate_id: string;
+    candidate_key: string;
+    finding_type: string;
+    status: "valid" | "invalid";
+    validation_errors: string[];
+    description: string;
+    confidence: number;
+    priority_hint: string;
+    suggested_action: string;
+    limitations: string[];
+    subject: {
+      kind: string;
+      anchor_message_id: string;
+      anchor_revision_id: string;
+    };
+    evidence: FindingMessage[];
+  } | null;
+  evidence: FindingMessage[];
+  surrounding: (FindingMessage & { is_anchor: boolean })[];
+  history: {
+    run_id: string;
+    candidate_id: string;
+    observed_at: string;
+    as_of: string;
+    summary: string;
+  }[];
+  detector: {
+    provider: string | null;
+    model_id: string | null;
+    detector_version: string | null;
+    prompt_version: string | null;
+    schema_version: string | null;
+    duration_ms: number | null;
+    usage: Record<string, unknown> | null;
+    cost_usd: number | null;
+  } | null;
+  first_response_at: string | null;
+};
+
 export type ProjectSettings = {
   id: string;
   version_no: number;

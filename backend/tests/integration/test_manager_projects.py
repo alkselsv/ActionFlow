@@ -24,6 +24,7 @@ from actionflow.persistence.project_settings import (
     SettingsVersion,
 )
 from actionflow.setup_manager import create_manager
+from actionflow.temporal.activities import AnalysisActivities
 from actionflow.worker import analysis_worker
 
 ORIGIN = {"Origin": "http://127.0.0.1:5173"}
@@ -219,7 +220,10 @@ def check_analysis(browser, sessions, project_id, monkeypatch):
             event.next_attempt_at -= timedelta(minutes=1)
         assert await dispatch_once(sessions, connect, queue)
         if client is None:
-            analysis_input.prepare_input(sessions, created["run_id"])
+            analysis_input.prepare_input(sessions, created["run_id"], finalize=False)
+            activities = AnalysisActivities(sessions)
+            activities.detect(created["run_id"])
+            activities.finalize(created["run_id"])
 
     async def scenario():
         if os.environ.get("ACTIONFLOW_TEST_TEMPORAL") != "1":
@@ -241,7 +245,7 @@ def check_analysis(browser, sessions, project_id, monkeypatch):
     asyncio.run(scenario())
     status = browser.get(f"/api/v1/analyses/{created['run_id']}").json()
     assert status["status"] == "succeeded"
-    assert status["stage"] == "input_ready"
+    assert status["stage"] == "unanswered_ready"
     assert status["settings_version_id"] == prior_id
     assert status["limitations"]["message_count"] == 3
     assert status["limitations"]["missing_settings"] is False

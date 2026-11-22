@@ -40,6 +40,7 @@ async def dispatch_once(sessions, connect, queue):
                 run.id,
                 id=run.workflow_id,
                 task_queue=queue,
+                execution_timeout=timedelta(minutes=30),
                 id_reuse_policy=WorkflowIDReusePolicy.REJECT_DUPLICATE,
                 rpc_timeout=timedelta(seconds=10),
             )
@@ -104,11 +105,11 @@ async def reconcile_once(sessions, connect):
         }:
             db.refresh(run, with_for_update=True)
             if run.status not in TERMINAL:
-                run.status, run.stage = "failed", "prepare"
+                run.status = "failed"
                 run.error_code = (
                     "analysis_input_timeout"
                     if description.status == WorkflowExecutionStatus.TIMED_OUT
-                    else "analysis_input_failed"
+                    else "analysis_workflow_failed"
                 )
                 run.retryable, run.finished_at = True, utc_now()
 

@@ -45,6 +45,7 @@ def start_result(run):
 
 
 def run_result(run):
+    cost = run.cost_usd
     return {
         **start_result(run),
         "status": run.status,
@@ -53,12 +54,27 @@ def run_result(run):
         "period_start": as_utc(run.period_start),
         "period_end": as_utc(run.period_end),
         "as_of": as_utc(run.as_of),
+        "apply_to_queue": run.apply_to_queue,
         "settings_version_id": run.settings_version_id,
         "input_hash": run.input_hash,
         "limitations": run.limitations,
         "error_code": run.error_code,
         "temporal_run_id": run.temporal_run_id,
-        "cost_usd": None,
+        "cost_usd": float(cost) if cost is not None else None,
+        "usage": run.usage,
+        "detector": {
+            "provider": run.provider,
+            "model_id": run.model_id,
+            "detector_version": run.detector_version,
+            "prompt_version": run.prompt_version,
+            "schema_version": run.schema_version,
+            "parameters": run.model_params,
+            "duration_ms": run.detector_duration_ms,
+        },
+        "implemented_types": ["unanswered"],
+        "candidate_count": run.candidate_count,
+        "invalid_candidate_count": run.invalid_candidate_count,
+        "finding_count": run.finding_count,
         "duration_seconds": (
             as_utc(run.finished_at) - as_utc(run.started_at)
         ).total_seconds()
