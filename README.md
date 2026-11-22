@@ -4,15 +4,12 @@
 
 Первый сценарий M1 позволяет менеджеру войти, создать клиента и проект, назначить ответственного, импортировать синтетическую переписку и получить карточку обращения без содержательного ответа с проверяемыми основаниями.
 
-Понадобятся Docker Compose, uv с Python 3.14.10 и Node.js 26.13.1 с npm. Команды ниже для PowerShell и выполняются из корня репозитория. Подставьте свой локальный пароль PostgreSQL вместо `REPLACE_WITH_LOCAL_PASSWORD`.
+Понадобятся Docker Compose, uv с Python 3.14.10 и Node.js 26.13.1 с npm. Команды ниже для PowerShell и выполняются из корня репозитория.
 
-Скопируйте `.env.example` в `.env` и заполните локальные пароли и, при необходимости, параметры LLM/embeddings. `.env` исключён из Git; переменные процесса имеют приоритет над файлом. Шаблон перечисляет `ACTIONFLOW_LLM_*` и `ACTIONFLOW_EMBEDDING_*`.
+Скопируйте `.env.example` в `.env` и заполните локальные пароли и, при необходимости, `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL` и embeddings. `.env` исключён из Git; переменные процесса имеют приоритет над файлом. Docker Compose читает `POSTGRES_*` и `TEMPORAL_DB_PASSWORD` из этого файла, а `Settings.from_env()` собирает `ACTIONFLOW_DATABASE_URL` из `POSTGRES_*`, если явный URL не задан.
 
 ```powershell
-$env:ACTIONFLOW_DB_PASSWORD = 'REPLACE_WITH_LOCAL_PASSWORD'
-$dbPassword = [uri]::EscapeDataString($env:ACTIONFLOW_DB_PASSWORD)
-$env:ACTIONFLOW_DATABASE_URL = "postgresql+psycopg://actionflow:${dbPassword}@127.0.0.1:5432/actionflow"
-docker compose -f infra/compose.yml up -d --wait postgres
+docker compose --env-file .env -f infra/compose.yml up -d --wait postgres
 uv sync --project backend --frozen
 uv run --project backend --frozen alembic -c backend/alembic.ini upgrade head
 $env:PYTHONPATH = 'backend/src'
@@ -37,15 +34,14 @@ npm.cmd --prefix frontend run dev
 
 ### Запуск анализа
 
-Поднимите Temporal с отдельными базами. Пароль сервера задаётся локально:
+Поднимите Temporal с отдельными базами. Пароль задаётся в `.env` как `TEMPORAL_DB_PASSWORD`:
 
 ```powershell
-$env:TEMPORAL_DB_PASSWORD = 'REPLACE_WITH_LOCAL_TEMPORAL_PASSWORD'
-docker compose -f infra/compose.yml -f infra/temporal.compose.yml up -d temporal-namespace
-docker compose -f infra/compose.yml -f infra/temporal.compose.yml logs temporal-namespace
+docker compose --env-file .env -f infra/compose.yml -f infra/temporal.compose.yml up -d temporal-namespace
+docker compose --env-file .env -f infra/compose.yml -f infra/temporal.compose.yml logs temporal-namespace
 ```
 
-Дождитесь создания namespace `default`. После применения прикладной миграции запустите worker и диспетчер в отдельных терминалах с тем же `ACTIONFLOW_DATABASE_URL` и `PYTHONPATH=backend/src`, что у API:
+Дождитесь создания namespace `default`. После применения прикладной миграции запустите worker и диспетчер в отдельных терминалах с тем же `.env` и `PYTHONPATH=backend/src`, что у API:
 
 ```powershell
 uv run --project backend --frozen python -m actionflow.worker
@@ -57,7 +53,7 @@ uv run --project backend --frozen python -m actionflow.dispatcher
 
 В проекте выберите период и момент оценки, нажмите «Запустить анализ» и откройте сохранённый результат. Конец периода исключается. Запуск фиксирует вход, версии промпта/схемы/модели и ограничения, затем сохраняет кандидатов, карточку и историю обнаружений.
 
-На шаге #13 выполняется только тип `unanswered`. По умолчанию используется локальная воспроизводимая baseline-модель; `cost_usd` намеренно равен `null`, а не нулю. Внешние LLM/embedding-провайдеры разрешены: заполните `ACTIONFLOW_LLM_*` в локальном `.env`, чтобы подключить выбранный адаптер. Карточка показывает описание, рекомендацию, основания, окружающую переписку и версии модели; повторный запуск сохраняет историю, а не создаёт дубликат.
+На шаге #13 выполняется только тип `unanswered`. По умолчанию используется локальная воспроизводимая baseline-модель; `cost_usd` намеренно равен `null`, а не нулю. Внешние LLM/embedding-провайдеры разрешены: заполните `OPENAI_API_KEY`, `OPENAI_MODEL` и при необходимости `OPENAI_BASE_URL`/`OPENAI_EMBEDDING_MODEL` в локальном `.env`, чтобы подключить выбранный адаптер. Карточка показывает описание, рекомендацию, основания, окружающую переписку и версии модели; повторный запуск сохраняет историю, а не создаёт дубликат.
 
 Чтобы включить проверку перезапуска worker, таймаута и ограниченных повторов на тестовом сервере Temporal, задайте `$env:ACTIONFLOW_TEST_TEMPORAL = '1'` перед `.\scripts\check.ps1`. При первом запуске SDK загружает тестовый сервер.
 

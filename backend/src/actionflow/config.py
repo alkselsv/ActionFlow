@@ -1,6 +1,7 @@
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import quote
 
 
 def load_local_env() -> None:
@@ -41,6 +42,24 @@ def _int(name: str, default: int) -> int:
     return int(value) if value else default
 
 
+def _database_url() -> str:
+    explicit = _optional("ACTIONFLOW_DATABASE_URL") or _optional("DATABASE_URL")
+    if explicit:
+        if explicit.startswith("postgres://"):
+            explicit = "postgresql+psycopg://" + explicit.removeprefix("postgres://")
+        elif explicit.startswith("postgresql://"):
+            explicit = "postgresql+psycopg://" + explicit.removeprefix(
+                "postgresql://"
+            )
+        return explicit
+    user = quote(os.getenv("POSTGRES_USER", "postgres"), safe="")
+    password = quote(os.getenv("POSTGRES_PASSWORD", "postgres"), safe="")
+    host = os.getenv("POSTGRES_HOST", "127.0.0.1")
+    port = os.getenv("POSTGRES_PORT", "5432")
+    database = quote(os.getenv("POSTGRES_DB", "actionflow"), safe="")
+    return f"postgresql+psycopg://{user}:{password}@{host}:{port}/{database}"
+
+
 @dataclass(frozen=True)
 class Settings:
     database_url: str
@@ -66,18 +85,23 @@ class Settings:
     @classmethod
     def from_env(cls):
         load_local_env()
+        openai_key = _optional("OPENAI_API_KEY")
+        openai_base_url = _optional("OPENAI_BASE_URL")
+        openai_model = _optional("OPENAI_MODEL")
         return cls(
-            os.environ["ACTIONFLOW_DATABASE_URL"],
+            _database_url(),
             frontend_origin=os.getenv(
-                "ACTIONFLOW_FRONTEND_ORIGIN", "http://127.0.0.1:5173"
+                "ACTIONFLOW_FRONTEND_ORIGIN",
+                os.getenv("FRONTEND_ORIGIN", "http://127.0.0.1:5173"),
             ),
             temporal_address=os.getenv("TEMPORAL_ADDRESS", "127.0.0.1:7233"),
             temporal_namespace=os.getenv("TEMPORAL_NAMESPACE", "default"),
             temporal_task_queue=os.getenv("TEMPORAL_TASK_QUEUE", "actionflow"),
-            llm_provider=_optional("ACTIONFLOW_LLM_PROVIDER"),
-            llm_model=_optional("ACTIONFLOW_LLM_MODEL"),
-            llm_api_key=_optional("ACTIONFLOW_LLM_API_KEY"),
-            llm_base_url=_optional("ACTIONFLOW_LLM_BASE_URL"),
+            llm_provider=_optional("ACTIONFLOW_LLM_PROVIDER")
+            or ("openai" if openai_key else None),
+            llm_model=_optional("ACTIONFLOW_LLM_MODEL") or openai_model,
+            llm_api_key=_optional("ACTIONFLOW_LLM_API_KEY") or openai_key,
+            llm_base_url=_optional("ACTIONFLOW_LLM_BASE_URL") or openai_base_url,
             llm_timeout_seconds=_float("ACTIONFLOW_LLM_TIMEOUT_SECONDS", 60.0),
             llm_max_attempts=_int("ACTIONFLOW_LLM_MAX_ATTEMPTS", 4),
             llm_budget_usd=_float("ACTIONFLOW_LLM_BUDGET_USD"),
@@ -87,10 +111,13 @@ class Settings:
             llm_output_cost_usd_per_million=_float(
                 "ACTIONFLOW_LLM_OUTPUT_COST_USD_PER_MILLION"
             ),
-            embedding_provider=_optional("ACTIONFLOW_EMBEDDING_PROVIDER"),
-            embedding_model=_optional("ACTIONFLOW_EMBEDDING_MODEL"),
-            embedding_api_key=_optional("ACTIONFLOW_EMBEDDING_API_KEY"),
-            embedding_base_url=_optional("ACTIONFLOW_EMBEDDING_BASE_URL"),
+            embedding_provider=_optional("ACTIONFLOW_EMBEDDING_PROVIDER")
+            or ("openai" if openai_key and _optional("OPENAI_EMBEDDING_MODEL") else None),
+            embedding_model=_optional("ACTIONFLOW_EMBEDDING_MODEL")
+            or _optional("OPENAI_EMBEDDING_MODEL"),
+            embedding_api_key=_optional("ACTIONFLOW_EMBEDDING_API_KEY") or openai_key,
+            embedding_base_url=_optional("ACTIONFLOW_EMBEDDING_BASE_URL")
+            or openai_base_url,
             embedding_timeout_seconds=_float(
                 "ACTIONFLOW_EMBEDDING_TIMEOUT_SECONDS", 60.0
             ),

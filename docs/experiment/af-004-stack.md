@@ -84,9 +84,9 @@
 
 Целевой порядок запуска (команды появятся в #8; приложение ещё не реализовано):
 
-1. `docker compose up -d postgres`
+1. `docker compose --env-file .env -f infra/compose.yml up -d postgres`
 2. Одноразовый job `temporalio/admin-tools:1.32.2` создаёт БД `temporal`, `temporal_visibility` и применяет схему.
-3. `docker compose up -d temporal temporal-ui`
+3. `docker compose --env-file .env -f infra/compose.yml -f infra/temporal.compose.yml up -d temporal temporal-ui`
 4. Одноразовый job создаёт namespace `default`.
 5. `uv sync --frozen && uv run alembic upgrade head`
 6. `uv run uvicorn ... --host 127.0.0.1`
@@ -146,7 +146,7 @@
 
 Согласно [политике окружения](af-004-environment-policy.md) внешние LLM/embedding-провайдеры разрешены. Конкретный провайдер, модель и бюджет по умолчанию не выбраны; конфигурация задаётся в локальном `.env` (шаблон — `.env.example`). Секреты остаются вне Git.
 
-В #13 реализован заменяемый адаптер и локальная детерминированная baseline-модель `local-baseline-unanswered-v1` для типа `unanswered`: она не вызывает внешний API, не передаёт текст наружу и сохраняет `cost_usd = null`. Это позволяет проверить контракт, валидацию оснований, Temporal и карточку. При заполненных `ACTIONFLOW_LLM_PROVIDER`, `ACTIONFLOW_LLM_MODEL`, `ACTIONFLOW_LLM_API_KEY` и `ACTIONFLOW_LLM_BASE_URL` можно подключить внешний адаптер; выбор качества — в M2.
+В #13 реализован заменяемый адаптер и локальная детерминированная baseline-модель `local-baseline-unanswered-v1` для типа `unanswered`: она не вызывает внешний API, не передаёт текст наружу и сохраняет `cost_usd = null`. Это позволяет проверить контракт, валидацию оснований, Temporal и карточку. При заполненных `OPENAI_API_KEY`, `OPENAI_MODEL` и `OPENAI_BASE_URL` (или override `ACTIONFLOW_LLM_*`) можно подключить внешний адаптер; выбор качества — в M2.
 
 Контракт: адаптер с структурированным выводом, проверкой схемы и учётом `provider`, `model`, версий prompt/схемы, токенов, стоимости и `run_id`; неизвестная стоимость — `null`, не `0`. Переменные бюджета и тарифов перечислены в `.env.example`.
 
