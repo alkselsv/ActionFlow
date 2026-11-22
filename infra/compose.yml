@@ -3,8 +3,8 @@ services:
     image: postgres:16.16
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-actionflow}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_USER: ${POSTGRES_USER:-actionflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-${ACTIONFLOW_DB_PASSWORD:?Set POSTGRES_PASSWORD or ACTIONFLOW_DB_PASSWORD}}
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
@@ -15,7 +15,7 @@ services:
           "CMD",
           "pg_isready",
           "-U",
-          "${POSTGRES_USER:-postgres}",
+          "${POSTGRES_USER:-actionflow}",
           "-d",
           "${POSTGRES_DB:-actionflow}",
         ]
