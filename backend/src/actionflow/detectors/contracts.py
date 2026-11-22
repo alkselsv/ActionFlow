@@ -97,6 +97,7 @@ class Candidate(BaseModel):
     suggested_action: Literal["reply", "review", "follow_up", "none"] = "review"
     evidence: list[Evidence] = Field(min_length=1, max_length=20)
     commitment: CommitmentTerms | None = None
+    explicit_risk: bool = False
     limitations: list[
         Literal[
             "first_reaction_without_resolution",

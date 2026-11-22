@@ -26,6 +26,7 @@ const initialFilters: Filters = {
 const typeLabels: Record<string, string> = {
   unanswered: "Обращение без ответа",
   commitment: "Обязательство Vedita",
+  complaint: "Претензия клиента",
 };
 
 const commitmentStatusLabels: Record<string, string> = {
@@ -162,6 +163,7 @@ export function FindingsQueue({
         <option value="">Все доступные</option>
         <option value="unanswered">Обращения без ответа</option>
         <option value="commitment">Обязательства Vedita</option>
+        <option value="complaint">Претензии клиента</option>
       </select></label>
       <label>Статус<select value={filters.status} onChange={(event) => setFilter("status", event.target.value)}>
         <option value="">Все</option><option value="new">Новые</option><option value="confirmed">Подтверждённые</option>
@@ -186,7 +188,7 @@ export function FindingsQueue({
         <button className={"project" + (card?.id === item.id ? " selected" : "")} onClick={() => void openCard(item.id)}>
           <strong>{typeLabels[item.type] ?? item.type}</strong>
           <span>{item.description}</span>
-          <span>Приоритет: {priorityValueLabels[item.priority] ?? item.priority} · {item.type === "commitment" ? `обязательство: ${item.commitment?.status ? commitmentStatusLabels[item.commitment.status] ?? item.commitment.status : "неизвестно"}` : `SLA: ${slaLabels[item.sla.state] ?? item.sla.state}`} · версия {item.version}</span>
+          <span>Приоритет: {priorityValueLabels[item.priority] ?? item.priority} · {item.type === "commitment" ? `обязательство: ${item.commitment?.status ? commitmentStatusLabels[item.commitment.status] ?? item.commitment.status : "неизвестно"}` : item.type === "complaint" ? "претензия клиента" : `SLA: ${slaLabels[item.sla.state] ?? item.sla.state}`} · версия {item.version}</span>
           {item.commitment?.due_at && <span>Срок обязательства: {new Date(item.commitment.due_at).toLocaleString()}.</span>}
           {explanation(item.priority_reason) && <span>Почему: {explanation(item.priority_reason)}.</span>}
           {item.sla.due_at && <span>Срок: {new Date(item.sla.due_at).toLocaleString()} · оценка: {item.sla.reason?.evaluated_at ? new Date(String(item.sla.reason.evaluated_at)).toLocaleString() : "не указана"}.</span>}

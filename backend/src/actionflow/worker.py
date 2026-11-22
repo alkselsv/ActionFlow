@@ -20,6 +20,7 @@ def analysis_worker(client, sessions, queue, executor, detector=None):
             activities.prepare,
             activities.detect,
             activities.detect_commitment,
+            activities.detect_complaint,
             activities.finalize,
             activities.fail,
             activities.fail_input,

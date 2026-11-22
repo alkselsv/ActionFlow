@@ -114,6 +114,29 @@ class AnalysisWorkflow:
 
         try:
             await workflow.execute_activity(
+                "detect_complaint",
+                run_id,
+                start_to_close_timeout=DETECT_TIMEOUT,
+                schedule_to_close_timeout=timedelta(minutes=16),
+                retry_policy=DETECT_RETRY,
+            )
+        except ActivityError as failure:
+            code, retryable = failure_details(
+                failure,
+                "complaint_detection_failed",
+                ("provider_rate_limited", "provider_timeout"),
+            )
+            if isinstance(failure.cause, TimeoutError):
+                code = "provider_timeout"
+            await record_failure(run_id, "detector", code, retryable)
+            raise ApplicationError(
+                "Не удалось найти претензии клиента",
+                type=code,
+                non_retryable=not retryable,
+            ) from failure
+
+        try:
+            await workflow.execute_activity(
                 "finalize_analysis",
                 run_id,
                 start_to_close_timeout=FINALIZE_TIMEOUT,
