@@ -107,14 +107,14 @@ def create_app(settings: Settings) -> FastAPI:
         expose_headers=["Idempotent-Replayed"],
     )
 
-    def error(status, code, message):
+    def error(status, code, message, details=None):
         return JSONResponse(
             status_code=status,
             content={
                 "error": {
                     "code": code,
                     "message": message,
-                    "details": {},
+                    "details": details or {},
                     "request_id": str(uuid4()),
                 }
             },
@@ -123,7 +123,16 @@ def create_app(settings: Settings) -> FastAPI:
     @app.exception_handler(StarletteHTTPException)
     async def http_error(_request, exc):
         if isinstance(exc.detail, dict):
-            return error(exc.status_code, exc.detail["code"], exc.detail["message"])
+            return error(
+                exc.status_code,
+                exc.detail["code"],
+                exc.detail["message"],
+                {
+                    key: value
+                    for key, value in exc.detail.items()
+                    if key not in ("code", "message")
+                },
+            )
         code = {
             400: "malformed_request",
             401: "unauthenticated",

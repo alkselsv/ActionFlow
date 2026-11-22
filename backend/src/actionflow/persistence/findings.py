@@ -178,6 +178,7 @@ class Finding(Base):
         DateTime(timezone=True)
     )
     commitment_status: Mapped[str | None] = mapped_column(String(20))
+    snooze_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     latest_candidate_id: Mapped[str | None] = mapped_column(
         ForeignKey("candidate.id")
     )
@@ -226,4 +227,55 @@ class FindingObservation(Base):
         ForeignKey(
             "settings_version.id", name="fk_finding_observation_settings_version"
         )
+    )
+
+
+class FindingProposal(Base):
+    """A system suggestion that requires an explicit manager transition."""
+
+    __tablename__ = "finding_proposal"
+    __table_args__ = (
+        UniqueConstraint("finding_id", "kind", "source_key"),
+        Index("ix_finding_proposal_finding_status", "finding_id", "status"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    finding_id: Mapped[str] = mapped_column(ForeignKey("finding.id"))
+    run_id: Mapped[str | None] = mapped_column(ForeignKey("analysis_run.id"))
+    kind: Mapped[str] = mapped_column(String(20))
+    status: Mapped[str] = mapped_column(String(20), default="open")
+    reason: Mapped[dict] = mapped_column(document, default=dict)
+    source_key: Mapped[str] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now
+    )
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class ManagerAction(Base):
+    """Immutable audit record for a manager's decision."""
+
+    __tablename__ = "manager_action"
+    __table_args__ = (
+        UniqueConstraint("idempotency_key"),
+        Index("ix_manager_action_finding_created", "finding_id", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    finding_id: Mapped[str] = mapped_column(ForeignKey("finding.id"))
+    action: Mapped[str] = mapped_column(String(20))
+    from_status: Mapped[str] = mapped_column(String(20))
+    to_status: Mapped[str] = mapped_column(String(20))
+    comment: Mapped[str | None] = mapped_column(Text)
+    snooze_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    proposal_id: Mapped[str | None] = mapped_column(
+        ForeignKey("finding_proposal.id")
+    )
+    expected_version: Mapped[int]
+    actor_user_id: Mapped[int] = mapped_column(ForeignKey("app_user.id"))
+    idempotency_key: Mapped[str] = mapped_column(String(200))
+    request_hash: Mapped[str] = mapped_column(String(64))
+    response_body: Mapped[dict] = mapped_column(document)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now
     )

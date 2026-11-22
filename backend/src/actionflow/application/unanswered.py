@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from actionflow.application.proposals import ensure_proposal
 from actionflow.application.rules import RuleResult, evaluate_unanswered
 from actionflow.detectors.contracts import (
     Detector,
@@ -140,7 +141,7 @@ def _upsert_finding(
     candidate_row: Candidate,
     validation: CandidateValidation,
     rules: RuleResult,
-) -> bool:
+) -> Finding:
     finding = db.scalar(
         select(Finding)
         .where(
@@ -204,6 +205,21 @@ def _upsert_finding(
         if changed:
             finding.version += 1
             finding.updated_at = now
+            if finding.status in ("rejected", "closed", "snoozed"):
+                proposal_kind = "reopen" if finding.status == "closed" else "review"
+                ensure_proposal(
+                    db,
+                    finding,
+                    kind=proposal_kind,
+                    reason={
+                        "reason": "new_analysis_observation",
+                        "run_id": run.id,
+                        "summary": candidate.description,
+                        "finding_status": finding.status,
+                    },
+                    source_key=f"{finding.status}:{run.input_hash}",
+                    run_id=run.id,
+                )
 
     observation = db.scalar(
         select(FindingObservation).where(
@@ -228,8 +244,7 @@ def _upsert_finding(
                 settings_version_id=rules.settings_version_id,
             )
         )
-        return True
-    return False
+    return finding
 
 
 def analyze_unanswered(

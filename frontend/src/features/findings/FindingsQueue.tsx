@@ -109,6 +109,7 @@ export function FindingsQueue({
   const [card, setCard] = useState<FindingCard | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [refresh, setRefresh] = useState(0);
 
   function handleError(cause: unknown) {
     if (cause instanceof ApiError && cause.status === 401) onExpired();
@@ -129,7 +130,11 @@ export function FindingsQueue({
         if (!active) return;
         setItems(findings.items);
         setCounts(nextCounts);
-        setCard(null);
+        setCard((current) =>
+          current && findings.items.some((item) => item.id === current.id)
+            ? current
+            : null,
+        );
       })
       .catch((cause) => {
         if (active) handleError(cause);
@@ -140,7 +145,7 @@ export function FindingsQueue({
     return () => {
       active = false;
     };
-  }, [projectId, filters]);
+  }, [projectId, filters, refresh]);
 
   async function openCard(id: string) {
     setError("");
@@ -196,7 +201,7 @@ export function FindingsQueue({
           {item.limitations.length > 0 && <span>Ограничения: {item.limitations.map((limitation) => limitationLabels[limitation] ?? limitation).join("; ")}.</span>}
         </button>
       </li>)}</ul>
-      {card && <FindingDetails card={card}/>}
+      {card && <FindingDetails card={card} onUpdated={(updated) => { setCard(updated); setRefresh((value) => value + 1); }} onExpired={onExpired} />}
     </div>}
   </section>;
 }

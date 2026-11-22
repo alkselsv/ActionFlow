@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from actionflow.application.proposals import ensure_proposal
 from actionflow.application.rules import RuleResult, evaluate_commitment
 from actionflow.application.unanswered import load_detector_request
 from actionflow.detectors.contracts import (
@@ -280,7 +281,7 @@ def _upsert_finding(
     validation: CandidateValidation,
     commitment: Commitment,
     rules: RuleResult,
-) -> None:
+) -> Finding:
     finding = db.scalar(
         select(Finding)
         .where(
@@ -293,6 +294,7 @@ def _upsert_finding(
     )
     now = utc_now()
     candidate = validation.candidate
+    is_current = True
     if finding is None:
         finding = Finding(
             project_id=run.project_id,
@@ -325,7 +327,8 @@ def _upsert_finding(
             if finding.current_run_id
             else None
         )
-        if _newer_run(current_run, run):
+        is_current = _newer_run(current_run, run)
+        if is_current:
             finding.anchor_message_id = commitment.anchor_message_id
             finding.anchor_revision_id = commitment.anchor_revision_id
             finding.description = candidate.description
@@ -381,6 +384,41 @@ def _upsert_finding(
         observation.commitment_due_at = rules.commitment_due_at
         observation.commitment_status = rules.commitment_status
         observation.settings_version_id = rules.settings_version_id
+
+    if (
+        is_current
+        and commitment.status in ("fulfilled", "cancelled")
+        and finding.status != "closed"
+    ):
+        ensure_proposal(
+            db,
+            finding,
+            kind="close",
+            reason={
+                "reason": "commitment_completed",
+                "commitment_status": commitment.status,
+                "commitment_id": commitment.id,
+                "run_id": run.id,
+                "summary": candidate.description,
+            },
+            source_key=f"commitment:{commitment.id}:{commitment.status}",
+            run_id=run.id,
+        )
+    if is_current and finding.status in ("rejected", "closed", "snoozed"):
+        ensure_proposal(
+            db,
+            finding,
+            kind="reopen" if finding.status == "closed" else "review",
+            reason={
+                "reason": "new_analysis_observation",
+                "run_id": run.id,
+                "summary": candidate.description,
+                "finding_status": finding.status,
+            },
+            source_key=f"{finding.status}:{run.input_hash}",
+            run_id=run.id,
+        )
+    return finding
 
 
 def analyze_commitments(

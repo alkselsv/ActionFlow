@@ -1,4 +1,11 @@
-import type { FindingCard, FindingMessage } from "../../api/client";
+import { useState } from "react";
+import {
+  ApiError,
+  errorMessage,
+  request,
+  type FindingCard,
+  type FindingMessage,
+} from "../../api/client";
 
 const actionLabels: Record<string, string> = {
   reply: "Ответить клиенту по существу",
@@ -72,6 +79,22 @@ const commitmentEventLabels: Record<string, string> = {
   fulfill: "исполнение",
 };
 
+const statusLabels: Record<string, string> = {
+  new: "новая",
+  confirmed: "подтверждена",
+  rejected: "отклонена",
+  snoozed: "отложена",
+  closed: "закрыта",
+};
+
+const managerActionLabels: Record<string, string> = {
+  confirm: "Подтверждение",
+  reject: "Отклонение",
+  snooze: "Отсрочка",
+  close: "Закрытие",
+  dismiss_proposal: "Отклонение предложения",
+};
+
 function reasons(value: unknown) {
   const reasons = (value as { reasons?: unknown })?.reasons;
   return Array.isArray(reasons)
@@ -89,10 +112,78 @@ function Author({ message }: { message: FindingMessage }) {
     {" · "}{new Date(message.sent_at).toLocaleString()}</span>;
 }
 
-export function FindingDetails({ card }: { card: FindingCard }) {
+export function FindingDetails({
+  card,
+  onUpdated,
+  onExpired,
+}: {
+  card: FindingCard;
+  onUpdated?: (card: FindingCard) => void;
+  onExpired?: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [comment, setComment] = useState("");
+  const [snoozeUntil, setSnoozeUntil] = useState("");
+
+  async function perform(
+    action: "confirm" | "reject" | "snooze" | "close" | "dismiss_proposal",
+    proposalId?: string,
+  ) {
+    if ((action === "reject" || action === "close") && !comment.trim()) {
+      setError("Для этого действия нужна причина или основание.");
+      return;
+    }
+    if (action === "snooze" && !snoozeUntil) {
+      setError("Укажите время отсрочки.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const updated = await request<FindingCard>(
+        `/findings/${card.id}/actions`,
+        {
+          action,
+          expected_version: card.version,
+          comment: comment.trim() || undefined,
+          snooze_until: action === "snooze" ? new Date(snoozeUntil).toISOString() : undefined,
+          proposal_id: proposalId,
+        },
+        { "Idempotency-Key": crypto.randomUUID() },
+      );
+      setComment("");
+      onUpdated?.(updated);
+    } catch (cause) {
+      if (cause instanceof ApiError && cause.status === 401) {
+        onExpired?.();
+      } else if (cause instanceof ApiError && cause.status === 409) {
+        setError("Карточка изменилась. Обновите её и повторите действие.");
+      } else {
+        setError(errorMessage(cause));
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const returnProposal = card.proposals.find(
+    (proposal) =>
+      (proposal.kind === "reopen" || proposal.kind === "review") &&
+      proposal.status === "open",
+  );
+  const canConfirm =
+    card.status === "new" ||
+    card.status === "snoozed" ||
+    ((card.status === "rejected" || card.status === "closed") &&
+      returnProposal !== undefined);
+  const canChange = ["new", "confirmed", "snoozed"].includes(card.status);
+
   return <article className="finding-detail" aria-live="polite">
     <h3>{typeLabels[card.type] ?? "Ситуация"}</h3>
     <dl>
+      <dt>Статус</dt><dd>{statusLabels[card.status] ?? card.status}</dd>
+      {card.snooze_until && <><dt>Отложена до</dt><dd>{new Date(card.snooze_until).toLocaleString()}</dd></>}
       <dt>Описание</dt><dd>{card.description}</dd>
       <dt>Рекомендация</dt><dd>{actionLabels[card.recommendation] ?? card.recommendation}</dd>
       <dt>Приоритет</dt><dd>{priorityValueLabels[card.priority] ?? card.priority}</dd>
@@ -123,6 +214,40 @@ export function FindingDetails({ card }: { card: FindingCard }) {
       </ol>}
     </section>}
     {card.limitations.length > 0 && <p><strong>Ограничения:</strong> {card.limitations.map((item) => limitationLabels[item] ?? item).join("; ")}.</p>}
+
+    {!!card.proposals.length && <section className="proposals">
+      <h4>Предложения системы</h4>
+      <ul>{card.proposals.map((proposal) => <li key={proposal.id}>
+        <strong>{proposal.kind === "close" ? "Закрыть карточку" : proposal.kind === "reopen" ? "Переоткрыть карточку" : "Пересмотреть решение"}</strong>
+        {" · "}{proposal.status === "open" ? "ожидает решения" : proposal.status === "accepted" ? "принято" : "отклонено"}
+        {proposal.status === "open" && <button className="quiet" disabled={busy} onClick={() => void perform("dismiss_proposal", proposal.id)}>Отклонить предложение</button>}
+      </li>)}</ul>
+    </section>}
+
+    <section className="manager-actions">
+      <h4>Решение менеджера</h4>
+      <p>Подтверждение фиксирует, что карточка актуальна; закрытие — отдельное решение.</p>
+      <label>Комментарий или основание<textarea value={comment} onChange={(event) => setComment(event.target.value)} maxLength={4000} rows={3} /></label>
+      <div className="action-row">
+        <button disabled={busy || !canConfirm} onClick={() => void perform("confirm", returnProposal?.id)}>Подтвердить</button>
+        <button disabled={busy || !canChange} onClick={() => void perform("reject")}>Отклонить</button>
+        <button disabled={busy || !canChange} onClick={() => void perform("close")}>Закрыть</button>
+      </div>
+      <label>Отложить до<input type="datetime-local" value={snoozeUntil} onChange={(event) => setSnoozeUntil(event.target.value)} /></label>
+      <button disabled={busy || !canChange} onClick={() => void perform("snooze")}>Отложить</button>
+      {error && <p role="alert">{error}</p>}
+    </section>
+
+    <h4>История решений</h4>
+    <ol className="manager-action-history">{card.actions.map((action) => <li key={action.id}>
+      <strong>{managerActionLabels[action.action] ?? action.action}</strong>
+      {" · "}{new Date(action.created_at).toLocaleString()}
+      {action.actor && <> · {action.actor}</>}
+      {" · "}{statusLabels[action.from_status] ?? action.from_status} → {statusLabels[action.to_status] ?? action.to_status}
+      {action.snooze_until && <> · до {new Date(action.snooze_until).toLocaleString()}</>}
+      {action.comment && <p>{action.comment}</p>}
+    </li>)}</ol>
+    {card.actions.length === 0 && <p>Решений пока нет.</p>}
 
     <h4>Основания</h4>
     <ol className="evidence-list">{card.evidence.map((message, index) => <li key={`${message.revision_id}-${index}`} className={message.role === "anchor" ? "anchor" : ""}>

@@ -1,12 +1,20 @@
-from fastapi import HTTPException, Query
+import json
+from datetime import datetime
+from hashlib import sha256
+from typing import Literal
+
+from fastapi import HTTPException, Query, Request, Response
+from fastapi.encoders import jsonable_encoder
+from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from actionflow.api.project_settings import require_project
 from actionflow.persistence.analysis import (
     AnalysisInputMessage,
     AnalysisRun,
 )
-from actionflow.persistence.database import as_utc
+from actionflow.persistence.database import User, as_utc, utc_now
 from actionflow.persistence.findings import (
     Candidate,
     CandidateEvidence,
@@ -14,12 +22,22 @@ from actionflow.persistence.findings import (
     CommitmentEvent,
     Finding,
     FindingObservation,
+    FindingProposal,
+    ManagerAction,
 )
 from actionflow.persistence.project_settings import (
     Message,
     MessageRevision,
     Participant,
 )
+
+
+class ActionInput(BaseModel):
+    action: Literal["confirm", "reject", "snooze", "close", "dismiss_proposal"]
+    expected_version: int = Field(ge=1)
+    comment: str | None = Field(default=None, max_length=4000)
+    snooze_until: datetime | None = None
+    proposal_id: str | None = None
 
 
 def _run(db, run_id):
@@ -212,6 +230,7 @@ def _summary(finding, run=None, observation=None):
         "run_id": run.id if run is not None else None,
         "as_of": as_utc(run.as_of) if run is not None else None,
         "version": finding.version,
+        "snooze_until": as_utc(finding.snooze_until),
         "updated_at": as_utc(finding.updated_at),
     }
 
@@ -245,6 +264,50 @@ def _history(db, finding_id):
             },
         }
         for observation, run in rows
+    ]
+
+
+def _manager_actions(db, finding_id):
+    rows = db.execute(
+        select(ManagerAction, User)
+        .outerjoin(User, User.id == ManagerAction.actor_user_id)
+        .where(ManagerAction.finding_id == finding_id)
+        .order_by(ManagerAction.created_at, ManagerAction.id)
+    ).all()
+    return [
+        {
+            "id": action.id,
+            "action": action.action,
+            "from_status": action.from_status,
+            "to_status": action.to_status,
+            "comment": action.comment,
+            "snooze_until": as_utc(action.snooze_until),
+            "proposal_id": action.proposal_id,
+            "expected_version": action.expected_version,
+            "actor": user.login if user is not None else None,
+            "created_at": as_utc(action.created_at),
+        }
+        for action, user in rows
+    ]
+
+
+def _proposals(db, finding_id):
+    rows = db.scalars(
+        select(FindingProposal)
+        .where(FindingProposal.finding_id == finding_id)
+        .order_by(FindingProposal.created_at, FindingProposal.id)
+    )
+    return [
+        {
+            "id": proposal.id,
+            "kind": proposal.kind,
+            "status": proposal.status,
+            "reason": proposal.reason,
+            "run_id": proposal.run_id,
+            "created_at": as_utc(proposal.created_at),
+            "resolved_at": as_utc(proposal.resolved_at),
+        }
+        for proposal in rows
     ]
 
 
@@ -361,6 +424,8 @@ def _finding(db, finding_id, run_id=None):
         if selected_run_id
         else [],
         "history": _history(db, finding.id),
+        "proposals": _proposals(db, finding.id),
+        "actions": _manager_actions(db, finding.id),
         "detector": {
             "provider": run.provider,
             "model_id": run.model_id,
@@ -534,6 +599,233 @@ def register_finding_routes(projects, router, Db, session_required, origin_requi
     @router.get("/findings/{finding_id}", dependencies=[session_required])
     def finding_card(finding_id: str, run_id: str | None = None, db=Db):
         return _finding(db, finding_id, run_id)
+
+    @router.post(
+        "/findings/{finding_id}/actions",
+        dependencies=[origin_required],
+    )
+    def finding_action(
+        finding_id: str,
+        data: ActionInput,
+        request: Request,
+        response: Response,
+        session=session_required,
+        db=Db,
+    ):
+        key = request.headers.get("Idempotency-Key", "").strip()
+        if not 0 < len(key) <= 200:
+            raise HTTPException(400, "Для действия укажите Idempotency-Key")
+        request_body = json.dumps(
+            data.model_dump(mode="json"),
+            sort_keys=True,
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+        request_hash = sha256(request_body.encode()).hexdigest()
+
+        finding = db.scalar(
+            select(Finding)
+            .where(Finding.id == finding_id)
+            .with_for_update()
+        )
+        if finding is None:
+            raise HTTPException(404, "Карточка не найдена")
+
+        replay = db.scalar(
+            select(ManagerAction).where(
+                ManagerAction.idempotency_key == key
+            )
+        )
+        if replay is not None:
+            if (
+                replay.finding_id != finding.id
+                or replay.request_hash != request_hash
+            ):
+                raise HTTPException(
+                    409,
+                    {
+                        "code": "idempotency_conflict",
+                        "message": "Ключ уже использован для другого действия",
+                    },
+                )
+            response.headers["Idempotent-Replayed"] = "true"
+            return replay.response_body
+
+        if finding.version != data.expected_version:
+            raise HTTPException(
+                409,
+                {
+                    "code": "stale_finding",
+                    "message": "Карточка изменилась, обновите её перед действием",
+                    "current_version": finding.version,
+                },
+            )
+
+        from_status = finding.status
+        to_status = from_status
+        proposal: FindingProposal | None = None
+        decided_snooze_until = None
+        comment = data.comment.strip() if data.comment else None
+
+        if data.action == "confirm":
+            if from_status in ("rejected", "closed"):
+                proposal_kind = (
+                    "review" if from_status == "rejected" else "reopen"
+                )
+                if data.proposal_id:
+                    proposal = db.get(FindingProposal, data.proposal_id)
+                else:
+                    proposal = db.scalar(
+                        select(FindingProposal)
+                        .where(
+                            FindingProposal.finding_id == finding.id,
+                            FindingProposal.kind == proposal_kind,
+                            FindingProposal.status == "open",
+                        )
+                        .order_by(FindingProposal.created_at)
+                        .limit(1)
+                    )
+                if (
+                    proposal is None
+                    or proposal.finding_id != finding.id
+                    or proposal.status != "open"
+                    or proposal.kind != proposal_kind
+                ):
+                    raise HTTPException(
+                        422,
+                        "Для возврата отклонённой или закрытой карточки нужно открытое предложение",
+                    )
+            elif from_status in ("new", "snoozed"):
+                if data.proposal_id:
+                    proposal = db.get(FindingProposal, data.proposal_id)
+                    if (
+                        proposal is None
+                        or proposal.finding_id != finding.id
+                        or proposal.status != "open"
+                        or proposal.kind != "review"
+                    ):
+                        raise HTTPException(
+                            422,
+                            "Предложение пересмотра не найдено или уже обработано",
+                        )
+                elif from_status == "snoozed":
+                    proposal = db.scalar(
+                        select(FindingProposal)
+                        .where(
+                            FindingProposal.finding_id == finding.id,
+                            FindingProposal.kind == "review",
+                            FindingProposal.status == "open",
+                        )
+                        .order_by(FindingProposal.created_at)
+                        .limit(1)
+                    )
+            else:
+                raise HTTPException(422, "Карточка уже подтверждена")
+            to_status = "confirmed"
+            finding.snooze_until = None
+
+        elif data.action == "reject":
+            if from_status not in ("new", "confirmed", "snoozed"):
+                raise HTTPException(422, "Нельзя отклонить карточку в этом статусе")
+            if not comment:
+                raise HTTPException(422, "Для отклонения укажите причину")
+            to_status = "rejected"
+            finding.snooze_until = None
+
+        elif data.action == "snooze":
+            if from_status not in ("new", "confirmed", "snoozed"):
+                raise HTTPException(422, "Нельзя отложить карточку в этом статусе")
+            if data.snooze_until is None:
+                raise HTTPException(422, "Укажите время отсрочки")
+            until = as_utc(data.snooze_until)
+            if until <= utc_now():
+                raise HTTPException(422, "Время отсрочки должно быть в будущем")
+            to_status = "snoozed"
+            finding.snooze_until = until
+            decided_snooze_until = until
+
+        elif data.action == "close":
+            if from_status not in ("new", "confirmed", "snoozed"):
+                raise HTTPException(422, "Нельзя закрыть карточку в этом статусе")
+            if not comment:
+                raise HTTPException(422, "Для закрытия укажите основание")
+            to_status = "closed"
+            finding.snooze_until = None
+            close_proposals = db.scalars(
+                select(FindingProposal).where(
+                    FindingProposal.finding_id == finding.id,
+                    FindingProposal.kind == "close",
+                    FindingProposal.status == "open",
+                )
+            )
+            for item in close_proposals:
+                item.status = "accepted"
+                item.resolved_at = utc_now()
+
+        else:
+            if data.proposal_id is None:
+                raise HTTPException(422, "Укажите предложение")
+            proposal = db.get(FindingProposal, data.proposal_id)
+            if (
+                proposal is None
+                or proposal.finding_id != finding.id
+                or proposal.status != "open"
+            ):
+                raise HTTPException(422, "Предложение не найдено или уже обработано")
+
+        if proposal is not None and data.action in ("confirm", "dismiss_proposal"):
+            proposal.status = (
+                "accepted" if data.action == "confirm" else "dismissed"
+            )
+            proposal.resolved_at = utc_now()
+        if data.action == "dismiss_proposal":
+            to_status = from_status
+
+        finding.status = to_status
+        finding.version += 1
+        finding.updated_at = utc_now()
+        action = ManagerAction(
+            finding_id=finding.id,
+            action=data.action,
+            from_status=from_status,
+            to_status=to_status,
+            comment=comment,
+            snooze_until=decided_snooze_until,
+            proposal_id=proposal.id if proposal is not None else None,
+            expected_version=data.expected_version,
+            actor_user_id=session.user_id,
+            idempotency_key=key,
+            request_hash=request_hash,
+            response_body={},
+        )
+        db.add(action)
+        try:
+            db.flush()
+            body = jsonable_encoder(_finding(db, finding.id))
+            action.response_body = body
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            existing = db.scalar(
+                select(ManagerAction).where(
+                    ManagerAction.idempotency_key == key
+                )
+            )
+            if (
+                existing is not None
+                and existing.finding_id == finding_id
+                and existing.request_hash == request_hash
+            ):
+                response.headers["Idempotent-Replayed"] = "true"
+                return existing.response_body
+            raise HTTPException(
+                409,
+                {
+                    "code": "idempotency_conflict",
+                    "message": "Действие уже было сохранено",
+                },
+            ) from None
+        return body
 
     @router.get("/analyses/{run_id}/findings", dependencies=[session_required])
     def run_findings(run_id: str, db=Db):
