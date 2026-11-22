@@ -10,13 +10,19 @@ from actionflow.temporal.activities import AnalysisActivities
 from actionflow.temporal.workflow import AnalysisWorkflow
 
 
-def analysis_worker(client, sessions, queue, executor):
-    activities = AnalysisActivities(sessions)
+def analysis_worker(client, sessions, queue, executor, detector=None):
+    activities = AnalysisActivities(sessions, detector)
     return Worker(
         client,
         task_queue=queue,
         workflows=[AnalysisWorkflow],
-        activities=[activities.prepare, activities.fail],
+        activities=[
+            activities.prepare,
+            activities.detect,
+            activities.finalize,
+            activities.fail,
+            activities.fail_input,
+        ],
         activity_executor=executor,
         max_concurrent_activities=4,
     )

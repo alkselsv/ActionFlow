@@ -3,9 +3,16 @@ from alembic import context
 from actionflow.config import Settings
 from actionflow.persistence.analysis import AnalysisRun
 from actionflow.persistence.database import Base, database
+from actionflow.persistence.findings import Candidate, Finding
 from actionflow.persistence.project_settings import SettingsVersion
 
-assert SettingsVersion.metadata is AnalysisRun.metadata is Base.metadata
+assert (
+    SettingsVersion.metadata
+    is AnalysisRun.metadata
+    is Candidate.metadata
+    is Finding.metadata
+    is Base.metadata
+)
 
 settings = Settings.from_env()
 

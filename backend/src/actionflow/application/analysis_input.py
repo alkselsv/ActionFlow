@@ -86,7 +86,7 @@ def check_limit(db, run):
             raise InputTooLarge
 
 
-def prepare_input(sessions, run_id, deadline=None):
+def prepare_input(sessions, run_id, deadline=None, *, finalize=True):
     with sessions.begin() as db:
         run = db.scalar(
             select(AnalysisRun).where(AnalysisRun.id == run_id).with_for_update()
@@ -94,6 +94,12 @@ def prepare_input(sessions, run_id, deadline=None):
         if run is None:
             raise ValueError("Unknown analysis run")
         if run.status in TERMINAL:
+            return
+        if run.input_hash is not None:
+            if finalize:
+                run.status = "succeeded"
+                run.stage = "input_ready"
+                run.finished_at = run.finished_at or utc_now()
             return
         run.status = "running"
         run.stage = "prepare"
@@ -104,6 +110,12 @@ def prepare_input(sessions, run_id, deadline=None):
             select(AnalysisRun).where(AnalysisRun.id == run_id).with_for_update()
         )
         if run.status in TERMINAL:
+            return
+        if run.input_hash is not None:
+            if finalize:
+                run.status = "succeeded"
+                run.stage = "input_ready"
+                run.finished_at = run.finished_at or utc_now()
             return
         check_limit(db, run)
         settings = (
@@ -237,7 +249,11 @@ def prepare_input(sessions, run_id, deadline=None):
         }
         if deadline is not None and utc_now() >= deadline:
             raise TimeoutError("Activity deadline elapsed before saving the input")
-        run.status, run.stage, run.finished_at = "succeeded", "input_ready", utc_now()
+        run.stage = "input_ready"
+        if finalize:
+            run.status, run.finished_at = "succeeded", utc_now()
+        else:
+            run.status, run.finished_at = "running", None
 
 
 def fail_run(sessions, run_id, stage, error_code, retryable):

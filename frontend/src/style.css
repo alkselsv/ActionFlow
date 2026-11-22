@@ -39,3 +39,14 @@ dd { margin: 0 0 .6rem; }
 .settings dd { overflow-wrap: anywhere; white-space: pre-wrap; }
 .conversation { margin-top: 1rem; }
 .conversation article { scroll-margin-top: 1rem; }
+.findings-layout { display: grid; grid-template-columns: minmax(14rem, .8fr) 1.2fr; gap: 1rem; align-items: start; }
+.finding-list { margin: 0; }
+.finding-list .project { text-align: start; }
+.finding-list .project.selected { outline: 2px solid #14675d; }
+.finding-detail { border: 1px solid #cbd9d5; border-radius: .5rem; padding: 1rem; background: #f8fbfa; }
+.finding-detail h3, .finding-detail h4 { margin-bottom: .5rem; }
+.evidence-list, .surrounding { padding-left: 1.2rem; }
+.evidence-list li, .surrounding li { margin-bottom: .8rem; }
+.evidence-list li.anchor, .surrounding li.anchor { background: #fff7dd; border-left: 3px solid #c49a2c; padding: .5rem .7rem; }
+.evidence-list p, .surrounding p { margin: .3rem 0; }
+@media (max-width: 42rem) { .findings-layout { grid-template-columns: 1fr; } }

@@ -1,6 +1,13 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, UniqueConstraint
+from sqlalchemy import (
+    DateTime,
+    ForeignKey,
+    Index,
+    Numeric,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from actionflow.persistence.database import Base, new_id, utc_now
@@ -34,6 +41,18 @@ class AnalysisRun(Base):
     limitations: Mapped[dict | None] = mapped_column(document)
     error_code: Mapped[str | None] = mapped_column(String(64))
     retryable: Mapped[bool | None]
+    detector_version: Mapped[str | None] = mapped_column(String(80))
+    prompt_version: Mapped[str | None] = mapped_column(String(80))
+    schema_version: Mapped[str | None] = mapped_column(String(80))
+    provider: Mapped[str | None] = mapped_column(String(80))
+    model_id: Mapped[str | None] = mapped_column(String(120))
+    model_params: Mapped[dict | None] = mapped_column(document)
+    usage: Mapped[dict | None] = mapped_column(document)
+    cost_usd: Mapped[float | None] = mapped_column(Numeric(12, 6))
+    candidate_count: Mapped[int] = mapped_column(default=0)
+    finding_count: Mapped[int] = mapped_column(default=0)
+    invalid_candidate_count: Mapped[int] = mapped_column(default=0)
+    detector_duration_ms: Mapped[int | None]
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now
     )
