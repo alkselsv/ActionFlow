@@ -57,6 +57,29 @@ export type CommitmentInfo = {
   events?: CommitmentEvent[];
 };
 
+export type FindingProposal = {
+  id: string;
+  kind: string;
+  status: string;
+  reason: Record<string, unknown>;
+  run_id: string | null;
+  created_at: string;
+  resolved_at: string | null;
+};
+
+export type FindingAction = {
+  id: string;
+  action: string;
+  from_status: string;
+  to_status: string;
+  comment: string | null;
+  snooze_until: string | null;
+  proposal_id: string | null;
+  expected_version: number;
+  actor: string | null;
+  created_at: string;
+};
+
 export type FindingSummary = {
   id: string;
   project_id: string;
@@ -80,6 +103,7 @@ export type FindingSummary = {
   run_id: string | null;
   as_of: string | null;
   version: number;
+  snooze_until: string | null;
   updated_at: string;
 };
 export type FindingMessage = {
@@ -149,6 +173,8 @@ export type FindingCard = FindingSummary & {
       settings_version_id: string | null;
     };
   }[];
+  proposals: FindingProposal[];
+  actions: FindingAction[];
   detector: {
     provider: string | null;
     model_id: string | null;

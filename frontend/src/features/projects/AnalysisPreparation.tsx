@@ -231,7 +231,7 @@ export function AnalysisPreparation({ projectId, onExpired, onCompleted }: {
               <span>Приоритет: {finding.priority === "unknown" ? "не рассчитан" : finding.priority} · версия {finding.version}</span>
             </button>
           </li>)}</ul>
-          {card && <FindingDetails card={card} />}
+          {card && <FindingDetails card={card} onUpdated={setCard} onExpired={onExpired} />}
         </div>}
       </>}
       {page && <>

@@ -161,7 +161,7 @@ docs/
 | `GET /findings/{id}/history` | `limit`, `cursor` | наблюдения и решения | `404` |
 | `POST /findings/{id}/actions` | `action`, `expected_version`, `comment?`, `snooze_until?`, `proposal_id?` | `200` обновлённая карточка | `409`, `422` |
 
-Сортировка очереди: `updated_at` → `id`; приоритет и SLA доступны фильтрами и показываются в элементе. Карточка содержит `type`, `status`, `priority` и `priority_reason`, `sla {due_at, state, first_response_at, reason, settings_version_id}`, `commitment {status, due_at, subject_text, assignee_name, events[]}`, `limitations`, `subject`, `description`, `suggested_action`, `confidence`, `evidence[]`, `history[]`, `current_run_id`, `version`. Для `run_id` фильтры и счётчики используют сохранённые результаты этого запуска, а не текущую настройку проекта.
+Сортировка очереди: `updated_at` → `id`; приоритет и SLA доступны фильтрами и показываются в элементе. Карточка содержит `type`, `status`, `priority` и `priority_reason`, `sla {due_at, state, first_response_at, reason, settings_version_id}`, `commitment {status, due_at, subject_text, assignee_name, events[]}`, `limitations`, `subject`, `description`, `suggested_action`, `confidence`, `evidence[]`, `history[]`, `proposals[]`, `actions[]`, `current_run_id`, `version`, `snooze_until`. Для `run_id` фильтры и счётчики используют сохранённые результаты этого запуска, а не текущую настройку проекта.
 
 Действия:
 
@@ -173,7 +173,7 @@ docs/
 | `close` | `expected_version`, `comment` (основание разрешения) | `closed` | закрытие не равно подтверждению |
 | `dismiss_proposal` | `expected_version`, `proposal_id` | статус не меняется | предложение становится `dismissed` |
 
-Четыре действия `confirm`, `reject`, `snooze` и `close` меняют статус карточки. `dismiss_proposal` — обработка предложения системы, а не пятое действие менеджера: статус карточки сохраняется. При несовпадении `expected_version` — `409 stale_finding` с текущей версией; состояние не меняется. Повтор с тем же `Idempotency-Key` не создаёт второе действие. Ответ содержит новую версию карточки и созданную запись истории.
+Четыре действия `confirm`, `reject`, `snooze` и `close` меняют статус карточки. `confirm` из `rejected` требует открытое предложение `review`, из `closed` — `reopen`; для `snoozed` открытое предложение `review` принимается вместе с подтверждением. `close` принимает открытые предложения закрытия. Предложения: `close` — завершить ситуацию, `review` — пересмотреть отклонение или вернуться к отложенной карточке, `reopen` — переоткрыть закрытую; статусы `open`, `accepted`, `dismissed`. `dismiss_proposal` — обработка предложения системы, а не пятое действие менеджера: статус карточки сохраняется. При несовпадении `expected_version` — `409 stale_finding` с текущей версией; состояние не меняется. Повтор с тем же `Idempotency-Key` и телом возвращает сохранённый ответ с `Idempotent-Replayed: true`; другое тело — `409 idempotency_conflict`. Ответ содержит новую версию карточки, предложения и записи истории.
 
 ## Воспроизводимый вход анализа
 
@@ -326,20 +326,21 @@ Dispatcher — отдельный процесс с циклом PostgreSQL, б�
 | `commitment` | `id`, `project_id`, `anchor_message_id`, `anchor_revision_id`, `subject_text`, `assignee_name?`, `assignee_participant_id?`, `status`, `due_at?`, `due_uncertain`, `explicit_risk`, `created_at`, `updated_at`; `unique(project_id, anchor_message_id)` |
 | `commitment_event` | `id`, `commitment_id`, `kind`, `message_id?`, `revision_id?`, `due_at?`, `previous_due_at?`, `at`, `uncertain`; `unique(commitment_id, kind, message_id, revision_id)` |
 | `complaint_episode` | В MVP эпизод хранится как `finding` с `finding_type=complaint` и `subject_kind=complaint_episode`; отдельная таблица не создаётся. |
-| `finding` | `id`, `project_id`, `finding_type`, `subject_kind`, `subject_id`, `status`, `priority`, `priority_reason jsonb`, `sla_due_at?`, `sla_state`, `sla_reason jsonb?`, `first_response_at?`, `commitment_due_at?`, `commitment_status?`, `current_run_id`, `version`, `updated_at`; `unique(project_id, finding_type, subject_kind, subject_id)` |
+| `finding` | `id`, `project_id`, `finding_type`, `subject_kind`, `subject_id`, `status`, `priority`, `priority_reason jsonb`, `sla_due_at?`, `sla_state`, `sla_reason jsonb?`, `first_response_at?`, `commitment_due_at?`, `commitment_status?`, `snooze_until?`, `current_run_id`, `version`, `updated_at`; `unique(project_id, finding_type, subject_kind, subject_id)` |
 | `finding_observation` | `id`, `finding_id`, `run_id`, `candidate_id`, `summary`, `priority`, `priority_reason jsonb`, `sla_due_at?`, `sla_state`, `sla_reason jsonb?`, `first_response_at?`, `commitment_due_at?`, `commitment_status?`, `settings_version_id?`, `observed_at` |
-| `finding_proposal` | `id`, `finding_id`, `run_id`, `kind`, `status`, `created_at`, `resolved_at?` |
+| `finding_proposal` | `id`, `finding_id`, `run_id?`, `kind`, `status`, `reason jsonb`, `source_key`, `created_at`, `resolved_at?`; `unique(finding_id, kind, source_key)` |
 | `candidate` | `id`, `run_id`, `finding_type`, `candidate_key`, `subject_kind`, `anchor_message_id`, `description`, `confidence`, `priority_hint`, `suggested_action`, `limitations jsonb`, `status`, `validation_errors jsonb`, `raw_payload jsonb`; `unique(run_id, candidate_key)` |
 | `candidate_evidence` | `id`, `candidate_id`, `role`, `message_id`, `revision_id`, `quote?`, `quote_hash?`; `unique(candidate_id, role, message_id, revision_id, quote_hash)` |
 | `analysis_run` | `id`, `project_id`, `status`, `apply_to_queue`, `period_start/end`, `as_of`, `settings_version_id`, `input_hash`, `detector_config jsonb`, `usage jsonb`, `cost_usd?`, `workflow_id`, `temporal_run_id?`, `error_code?`, `retryable?`, `stage?`, `created_at`, `started_at?`, `finished_at?`, `idempotency_key`; `unique(project_id, idempotency_key)` |
 | `analysis_input_message` | `run_id`, `message_id`, `revision_id`, `sent_at`, `observed_at`, `role`; `unique(run_id, message_id)` |
 | `analysis_error` | `id`, `run_id`, `stage`, `code`, `message`, `retryable`, `details jsonb`, `created_at` |
-| `manager_action` | `id`, `finding_id`, `action`, `from_status`, `to_status`, `comment?`, `proposal_id?`, `expected_version`, `actor_user_id`, `idempotency_key unique`, `created_at` |
+| `manager_action` | `id`, `finding_id`, `action`, `from_status`, `to_status`, `comment?`, `snooze_until?`, `proposal_id?`, `expected_version`, `actor_user_id`, `idempotency_key unique`, `request_hash`, `response_body jsonb`, `created_at` |
 | `import_run` | `id`, `project_id`, `status`, `file_name`, `file_size`, `report jsonb`, `error jsonb?`, `created_at`, `finished_at?` |
 | `outbox_event` | `id`, `event_key unique`, `kind`, `aggregate_type`, `aggregate_id`, `payload jsonb`, `status`, `attempts`, `next_attempt_at`, `last_error?`, `dispatched_at?` |
-| `idempotency_key` | `id`, `user_id`, `endpoint`, `key`, `request_hash`, `response_status`, `response_body jsonb`, `expires_at`; `unique(user_id, endpoint, key)` |
 
-Индексы: очередь `(project_id, status, priority, updated_at DESC)`, `(project_id, finding_type, status)`, `(project_id, sla_state, priority)`, `(project_id, finding_type, commitment_status)`, `(finding_id, created_at DESC)` для истории; `commitment(project_id, status)`, `commitment_event(commitment_id, at)`; `analysis_run(project_id, created_at DESC)`, `analysis_input_message(run_id)`; `candidate(run_id)`; `outbox_event(status, next_attempt_at)`; `session(expires_at)`. Уникальные ограничения — основной механизм идемпотентности при гонках.
+Идемпотентность действий менеджера хранится в `manager_action` (`idempotency_key unique`, `request_hash`, `response_body`): повтор с тем же ключом и телом возвращает сохранённый ответ, другое тело даёт конфликт. Импорт и запуск анализа используют собственные записи с `idempotency_key` и `request_hash`.
+
+Индексы: очередь `(project_id, status, priority, updated_at DESC)`, `(project_id, finding_type, status)`, `(project_id, sla_state, priority)`, `(project_id, finding_type, commitment_status)`, `(finding_id, created_at DESC)` для истории; `finding_proposal(finding_id, status)`, `manager_action(finding_id, created_at)`; `commitment(project_id, status)`, `commitment_event(commitment_id, at)`; `analysis_run(project_id, created_at DESC)`, `analysis_input_message(run_id)`; `candidate(run_id)`; `outbox_event(status, next_attempt_at)`; `session(expires_at)`. Уникальные ограничения — основной механизм идемпотентности при гонках.
 
 Миграции: Alembic, одна начальная ревизия и далее по одной на изменение; `alembic upgrade head` — явная команда, не автоматически при старте API. Тесты применяют миграции на пустую БД и проверяют откат последней ревизии в dev-контуре. Схема Temporal не входит в Alembic.
 

@@ -450,3 +450,284 @@ def test_escalating_complaint_is_high_and_neutral_observation_is_ignored(
             period_start="2026-09-15T00:00:00Z",
         )
         assert complaint_cards(browser, neutral_project) == []
+
+
+def test_four_manager_actions_preserve_history_and_replay(tmp_path, monkeypatch):
+    settings, sessions = setup_db(tmp_path, monkeypatch)
+    with TestClient(create_app(settings)) as browser:
+        project_id, settings_id = setup_project(browser)
+        with sessions.begin() as db:
+            version = db.get(SettingsVersion, settings_id)
+            assert version is not None
+            version.created_at = datetime(2026, 9, 13, 12, 0, tzinfo=UTC)
+        run_id = run_pipeline(
+            browser,
+            sessions,
+            project_id,
+            key="actions-run-1",
+            as_of="2026-09-15T10:35:00Z",
+            period_start="2026-09-15T00:00:00Z",
+        )
+        cards = commitment_cards(browser, project_id)
+        card = next(
+            browser.get(f"/api/v1/findings/{item['id']}").json()
+            for item in cards
+            if "смет" in item["description"]
+        )
+        assert card["status"] == "new"
+        finding_id = card["id"]
+
+        def act(key, action, *, comment=None, expected_version=None, proposal_id=None):
+            payload = {
+                "action": action,
+                "expected_version": expected_version or card["version"],
+            }
+            if comment:
+                payload["comment"] = comment
+            if proposal_id:
+                payload["proposal_id"] = proposal_id
+            if action == "snooze":
+                payload["snooze_until"] = "2099-01-02T10:00:00Z"
+            return browser.post(
+                f"/api/v1/findings/{finding_id}/actions",
+                headers={**ORIGIN, "Idempotency-Key": key},
+                json=payload,
+            )
+
+        confirm = act("action-confirm", "confirm")
+        assert confirm.status_code == 200
+        confirmed = confirm.json()
+        assert confirmed["status"] == "confirmed"
+        assert confirmed["version"] == card["version"] + 1
+        assert confirmed["actions"][0]["actor"] == "manager"
+        assert confirmed["actions"][0]["action"] == "confirm"
+
+        replay = act("action-confirm", "confirm")
+        assert replay.status_code == 200
+        assert replay.headers["Idempotent-Replayed"] == "true"
+        assert replay.json()["version"] == confirmed["version"]
+
+        conflict = act("action-confirm", "reject", comment="Другое тело")
+        assert conflict.status_code == 409
+
+        already_confirmed = act(
+            "action-confirm-again",
+            "confirm",
+            expected_version=confirmed["version"],
+        )
+        assert already_confirmed.status_code == 422
+        assert len(
+            browser.get(f"/api/v1/findings/{finding_id}").json()["actions"]
+        ) == 1
+
+        stale = act(
+            "action-stale",
+            "snooze",
+            expected_version=card["version"],
+        )
+        assert stale.status_code == 409
+        assert stale.json()["error"]["code"] == "stale_finding"
+        assert (
+            stale.json()["error"]["details"]["current_version"]
+            == confirmed["version"]
+        )
+
+        snoozed = act(
+            "action-snooze",
+            "snooze",
+            expected_version=confirmed["version"],
+        )
+        assert snoozed.status_code == 200
+        snoozed_card = snoozed.json()
+        assert snoozed_card["status"] == "snoozed"
+        assert snoozed_card["snooze_until"].startswith("2099-01-02T10:00:00")
+        assert snoozed_card["actions"][-1]["snooze_until"].startswith(
+            "2099-01-02T10:00:00"
+        )
+
+        # New grounds while snoozed produce a review proposal and keep the
+        # original snooze time until the manager returns to the card.
+        run_pipeline(
+            browser,
+            sessions,
+            project_id,
+            key="actions-snoozed-run",
+            as_of="2026-09-15T10:35:00Z",
+            period_start="2026-09-15T00:00:00Z",
+        )
+        snoozed_after_run = browser.get(
+            f"/api/v1/findings/{finding_id}"
+        ).json()
+        assert snoozed_after_run["status"] == "snoozed"
+        assert snoozed_after_run["snooze_until"].startswith(
+            "2099-01-02T10:00:00"
+        )
+        review = next(
+            item
+            for item in snoozed_after_run["proposals"]
+            if item["kind"] == "review" and item["status"] == "open"
+        )
+        returned = act(
+            "action-return",
+            "confirm",
+            expected_version=snoozed_after_run["version"],
+            proposal_id=review["id"],
+        )
+        assert returned.status_code == 200
+        returned_card = returned.json()
+        assert returned_card["status"] == "confirmed"
+        assert returned_card["snooze_until"] is None
+        assert next(
+            item
+            for item in returned_card["proposals"]
+            if item["id"] == review["id"]
+        )["status"] == "accepted"
+
+        rejected_without_reason = act(
+            "action-reject-empty",
+            "reject",
+            expected_version=returned_card["version"],
+        )
+        assert rejected_without_reason.status_code == 422
+        rejected = act(
+            "action-reject",
+            "reject",
+            expected_version=returned_card["version"],
+            comment="Клиент подтвердил закрытие вопроса",
+        )
+        assert rejected.status_code == 200
+        rejected_card = rejected.json()
+        assert rejected_card["status"] == "rejected"
+        assert rejected_card["actions"][-1]["comment"] == (
+            "Клиент подтвердил закрытие вопроса"
+        )
+
+        # A new analysis preserves the decision and proposes a reopen.
+        run_pipeline(
+            browser,
+            sessions,
+            project_id,
+            key="actions-run-2",
+            as_of="2026-09-15T10:35:00Z",
+            period_start="2026-09-15T00:00:00Z",
+        )
+        after_run = browser.get(f"/api/v1/findings/{finding_id}").json()
+        assert after_run["status"] == "rejected"
+        review = next(
+            item
+            for item in after_run["proposals"]
+            if item["kind"] == "review" and item["status"] == "open"
+        )
+        reopened = act(
+            "action-reopen",
+            "confirm",
+            expected_version=after_run["version"],
+            proposal_id=review["id"],
+        )
+        assert reopened.status_code == 200
+        reopened_card = reopened.json()
+        assert reopened_card["status"] == "confirmed"
+        assert next(
+            item
+            for item in reopened_card["proposals"]
+            if item["id"] == review["id"]
+        )["status"] == "accepted"
+
+        closed = act(
+            "action-close",
+            "close",
+            expected_version=reopened_card["version"],
+            comment="Вопрос решён",
+        )
+        assert closed.status_code == 200
+        closed_card = closed.json()
+        assert closed_card["status"] == "closed"
+        assert closed_card["actions"][-1]["to_status"] == "closed"
+
+        # New grounds after closing produce a proposal; the card stays closed
+        # until the manager explicitly accepts or dismisses it.
+        run_pipeline(
+            browser,
+            sessions,
+            project_id,
+            key="actions-run-3",
+            as_of="2026-09-15T10:35:00Z",
+            period_start="2026-09-15T00:00:00Z",
+        )
+        after_close = browser.get(f"/api/v1/findings/{finding_id}").json()
+        assert after_close["status"] == "closed"
+        reopen = next(
+            item
+            for item in after_close["proposals"]
+            if item["kind"] == "reopen" and item["status"] == "open"
+        )
+        dismissed = act(
+            "action-dismiss",
+            "dismiss_proposal",
+            expected_version=after_close["version"],
+            proposal_id=reopen["id"],
+        )
+        assert dismissed.status_code == 200
+        dismissed_card = dismissed.json()
+        assert dismissed_card["status"] == "closed"
+        assert next(
+            item
+            for item in dismissed_card["proposals"]
+            if item["id"] == reopen["id"]
+        )["status"] == "dismissed"
+
+        counts = browser.get(
+            f"/api/v1/projects/{project_id}/findings/counts"
+        ).json()
+        assert counts["by_status"]["closed"] == 1
+        closed_queue = browser.get(
+            f"/api/v1/projects/{project_id}/findings",
+            params={"status": "closed"},
+        ).json()
+        assert [item["id"] for item in closed_queue["items"]] == [finding_id]
+        assert run_id
+
+
+def test_completed_commitment_proposes_but_does_not_close_card(tmp_path, monkeypatch):
+    settings, sessions = setup_db(tmp_path, monkeypatch)
+    with TestClient(create_app(settings)) as browser:
+        project_id, settings_id = setup_project(browser, "north-conv-n-004.json")
+        with sessions.begin() as db:
+            version = db.get(SettingsVersion, settings_id)
+            assert version is not None
+            version.created_at = datetime(2026, 9, 14, 12, 0, tzinfo=UTC)
+        run_pipeline(
+            browser,
+            sessions,
+            project_id,
+            key="completed-commitment",
+            as_of="2026-09-15T08:30:00Z",
+            period_start="2026-09-15T00:00:00Z",
+        )
+        cards = commitment_cards(browser, project_id)
+        assert len(cards) == 1
+        card = browser.get(f"/api/v1/findings/{cards[0]['id']}").json()
+        assert card["commitment"]["status"] == "fulfilled"
+        assert card["status"] == "new"
+        proposal = next(
+            item
+            for item in card["proposals"]
+            if item["kind"] == "close" and item["status"] == "open"
+        )
+        assert proposal["reason"]["commitment_status"] == "fulfilled"
+
+        response = browser.post(
+            f"/api/v1/findings/{card['id']}/actions",
+            headers={**ORIGIN, "Idempotency-Key": "completed-close"},
+            json={
+                "action": "close",
+                "expected_version": card["version"],
+                "comment": "Результат подтверждён",
+            },
+        )
+        assert response.status_code == 200
+        closed = response.json()
+        assert closed["status"] == "closed"
+        assert next(
+            item for item in closed["proposals"] if item["id"] == proposal["id"]
+        )["status"] == "accepted"
