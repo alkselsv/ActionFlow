@@ -1,0 +1,18 @@
+[project]
+name = "actionflow-cognee-context"
+version = "0.1.0"
+description = "AF-024 part 1: Cognee source and lifecycle experiment for ActionFlow"
+requires-python = ">=3.11,<3.15"
+dependencies = [
+    "cognee[gliner]==1.6.10",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==9.2.0",
+    "truststore==0.10.5",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

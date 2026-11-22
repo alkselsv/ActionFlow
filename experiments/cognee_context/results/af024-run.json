@@ -1,0 +1,1532 @@
+{
+  "experiment": "AF-024 part 1 / issue #23",
+  "generated_at": "2026-11-22T23:01:43Z",
+  "environment": {
+    "python": "3.14.10",
+    "platform": "Windows-11-10.0.26300-SP0",
+    "cognee_version": "1.6.10",
+    "embedding_provider": "fastembed",
+    "embedding_model": "BAAI/bge-small-en-v1.5",
+    "graph_extractor": "gliner_demo",
+    "graph_model": "fastino/gliner2.5-base-v1",
+    "llm": "not configured; local keyless path only",
+    "storage": {
+      "relational": "sqlite",
+      "vector": "lancedb",
+      "graph": "ladybug",
+      "roots": "experiments/cognee_context/.runs/af024"
+    },
+    "auth": "ENABLE_BACKEND_ACCESS_CONTROL=true (default user)",
+    "caching": "CACHING=false"
+  },
+  "corpus": {
+    "path": "experiments/cognee_context/corpus.json",
+    "sha256_before": "a94385ec80455122aa1bd93a9167ce266e7e46967c096a348c432b1c74aad4b8",
+    "sha256_after": "a94385ec80455122aa1bd93a9167ce266e7e46967c096a348c432b1c74aad4b8",
+    "unchanged": true,
+    "stats": {
+      "project_count": 3,
+      "message_count": 11,
+      "revision_count": 13
+    },
+    "as_ofs": [
+      "2026-09-14T09:12:00Z",
+      "2026-09-18T00:00:00Z"
+    ],
+    "projection": "one Cognee DataItem per source message revision; coherent discussion is reconstructed by chat_id, sent_at, message_id and reply_to_message_id"
+  },
+  "manifest": {
+    "source_sha256": "a94385ec80455122aa1bd93a9167ce266e7e46967c096a348c432b1c74aad4b8",
+    "as_ofs": [
+      "2026-09-14T09:12:00Z",
+      "2026-09-18T00:00:00Z"
+    ],
+    "datasets": [
+      {
+        "name": "af024-alpha-20260914T091200Z",
+        "project_id": "alpha",
+        "as_of": "2026-09-14T09:12:00Z",
+        "discussion_ids": [
+          {
+            "message_id": "alpha-m1",
+            "revision": 1
+          },
+          {
+            "message_id": "alpha-m2",
+            "revision": 1
+          },
+          {
+            "message_id": "alpha-m6",
+            "revision": 1
+          }
+        ],
+        "items": [
+          {
+            "data_id": "afa20cd1-c29c-5206-8896-7311f6aa9160",
+            "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m1 revision=1 author_id=cust-alpha-sam author=Sam side=customer sent_at=2026-09-14T09:00:00Z available_at=2026-09-14T09:00:30Z edited_at=- deleted_at=- reply_to_message_id=-\nCan you send the corrected estimate by Friday?",
+            "metadata": {
+              "project": "alpha",
+              "chat_id": "chat-alpha",
+              "message_id": "alpha-m1",
+              "revision": 1,
+              "author_id": "cust-alpha-sam",
+              "author": "Sam",
+              "side": "customer",
+              "sent_at": "2026-09-14T09:00:00Z",
+              "available_at": "2026-09-14T09:00:30Z",
+              "edited_at": null,
+              "deleted_at": null,
+              "reply_to_message_id": null,
+              "data_id": "afa20cd1-c29c-5206-8896-7311f6aa9160"
+            },
+            "message_id": "alpha-m1",
+            "revision": 1
+          },
+          {
+            "data_id": "22b57b7a-e4b6-53f3-9ae1-13d69fe8ed57",
+            "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m2 revision=1 author_id=emp-alpha-alex author=Alex side=employee sent_at=2026-09-14T09:05:00Z available_at=2026-09-14T09:05:30Z edited_at=- deleted_at=- reply_to_message_id=alpha-m1\nYes, I will send the corrected estimate by Friday 12:00.",
+            "metadata": {
+              "project": "alpha",
+              "chat_id": "chat-alpha",
+              "message_id": "alpha-m2",
+              "revision": 1,
+              "author_id": "emp-alpha-alex",
+              "author": "Alex",
+              "side": "employee",
+              "sent_at": "2026-09-14T09:05:00Z",
+              "available_at": "2026-09-14T09:05:30Z",
+              "edited_at": null,
+              "deleted_at": null,
+              "reply_to_message_id": "alpha-m1",
+              "data_id": "22b57b7a-e4b6-53f3-9ae1-13d69fe8ed57"
+            },
+            "message_id": "alpha-m2",
+            "revision": 1
+          },
+          {
+            "data_id": "89dbc862-1634-5c42-a179-08d98eb8724b",
+            "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m6 revision=1 author_id=emp-alpha-alex author=Alex side=employee sent_at=2026-09-14T09:06:00Z available_at=2026-09-14T09:06:30Z edited_at=- deleted_at=2026-09-15T12:00:00Z reply_to_message_id=-\nTemporary draft: the old estimate amount was 1000.",
+            "metadata": {
+              "project": "alpha",
+              "chat_id": "chat-alpha",
+              "message_id": "alpha-m6",
+              "revision": 1,
+              "author_id": "emp-alpha-alex",
+              "author": "Alex",
+              "side": "employee",
+              "sent_at": "2026-09-14T09:06:00Z",
+              "available_at": "2026-09-14T09:06:30Z",
+              "edited_at": null,
+              "deleted_at": "2026-09-15T12:00:00Z",
+              "reply_to_message_id": null,
+              "data_id": "89dbc862-1634-5c42-a179-08d98eb8724b"
+            },
+            "message_id": "alpha-m6",
+            "revision": 1
+          }
+        ],
+        "excluded": [
+          {
+            "message_id": "alpha-m2",
+            "revision": "2",
+            "reason": "not_available"
+          },
+          {
+            "message_id": "alpha-m3",
+            "revision": "1",
+            "reason": "sent_after_as_of"
+          },
+          {
+            "message_id": "alpha-m4",
+            "revision": "1",
+            "reason": "sent_after_as_of"
+          },
+          {
+            "message_id": "alpha-m5",
+            "revision": "1",
+            "reason": "sent_after_as_of"
+          }
+        ],
+        "source_max_available_at": "2026-09-14T09:06:30Z"
+      },
+      {
+        "name": "af024-beta-20260914T091200Z",
+        "project_id": "beta",
+        "as_of": "2026-09-14T09:12:00Z",
+        "discussion_ids": [
+          {
+            "message_id": "beta-m1",
+            "revision": 1
+          },
+          {
+            "message_id": "beta-m2",
+            "revision": 1
+          }
+        ],
+        "items": [
+          {
+            "data_id": "2cce4bbd-6b98-5940-a480-84a3088539bc",
+            "text": "[actionflow] project=beta chat_id=chat-beta message_id=beta-m1 revision=1 author_id=cust-beta-sam author=Sam side=customer sent_at=2026-09-14T09:00:00Z available_at=2026-09-14T09:00:30Z edited_at=- deleted_at=- reply_to_message_id=-\nCan you send the signed contract by Friday?",
+            "metadata": {
+              "project": "beta",
+              "chat_id": "chat-beta",
+              "message_id": "beta-m1",
+              "revision": 1,
+              "author_id": "cust-beta-sam",
+              "author": "Sam",
+              "side": "customer",
+              "sent_at": "2026-09-14T09:00:00Z",
+              "available_at": "2026-09-14T09:00:30Z",
+              "edited_at": null,
+              "deleted_at": null,
+              "reply_to_message_id": null,
+              "data_id": "2cce4bbd-6b98-5940-a480-84a3088539bc"
+            },
+            "message_id": "beta-m1",
+            "revision": 1
+          },
+          {
+            "data_id": "e492e028-f148-5854-9603-e453be554f31",
+            "text": "[actionflow] project=beta chat_id=chat-beta message_id=beta-m2 revision=1 author_id=emp-beta-alex author=Alex side=employee sent_at=2026-09-14T09:10:00Z available_at=2026-09-14T09:10:30Z edited_at=- deleted_at=- reply_to_message_id=beta-m1\nI will send the signed contract by Thursday 17:00.",
+            "metadata": {
+              "project": "beta",
+              "chat_id": "chat-beta",
+              "message_id": "beta-m2",
+              "revision": 1,
+              "author_id": "emp-beta-alex",
+              "author": "Alex",
+              "side": "employee",
+              "sent_at": "2026-09-14T09:10:00Z",
+              "available_at": "2026-09-14T09:10:30Z",
+              "edited_at": null,
+              "deleted_at": null,
+              "reply_to_message_id": "beta-m1",
+              "data_id": "e492e028-f148-5854-9603-e453be554f31"
+            },
+            "message_id": "beta-m2",
+            "revision": 1
+          }
+        ],
+        "excluded": [
+          {
+            "message_id": "beta-m3",
+            "revision": "1",
+            "reason": "sent_after_as_of"
+          },
+          {
+            "message_id": "beta-m4",
+            "revision": "1",
+            "reason": "sent_after_as_of"
+          }
+        ],
+        "source_max_available_at": "2026-09-14T09:10:30Z"
+      },
+      {
+        "name": "af024-alpha-20260918T000000Z",
+        "project_id": "alpha",
+        "as_of": "2026-09-18T00:00:00Z",
+        "discussion_ids": [
+          {
+            "message_id": "alpha-m1",
+            "revision": 1
+          },
+          {
+            "message_id": "alpha-m2",
+            "revision": 2
+          },
+          {
+            "message_id": "alpha-m3",
+            "revision": 1
+          },
+          {
+            "message_id": "alpha-m4",
+            "revision": 1
+          },
+          {
+            "message_id": "alpha-m5",
+            "revision": 1
+          }
+        ],
+        "items": [
+          {
+            "data_id": "f022cf91-ba01-5714-9059-0e9380fed3c7",
+            "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m1 revision=1 author_id=cust-alpha-sam author=Sam side=customer sent_at=2026-09-14T09:00:00Z available_at=2026-09-14T09:00:30Z edited_at=- deleted_at=- reply_to_message_id=-\nCan you send the corrected estimate by Friday?",
+            "metadata": {
+              "project": "alpha",
+              "chat_id": "chat-alpha",
+              "message_id": "alpha-m1",
+              "revision": 1,
+              "author_id": "cust-alpha-sam",
+              "author": "Sam",
+              "side": "customer",
+              "sent_at": "2026-09-14T09:00:00Z",
+              "available_at": "2026-09-14T09:00:30Z",
+              "edited_at": null,
+              "deleted_at": null,
+              "reply_to_message_id": null,
+              "data_id": "f022cf91-ba01-5714-9059-0e9380fed3c7"
+            },
+            "message_id": "alpha-m1",
+            "revision": 1
+          },
+          {
+            "data_id": "34e378a6-6ccf-53f3-9c76-edebf4216262",
+            "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m2 revision=2 author_id=emp-alpha-alex author=Alex side=employee sent_at=2026-09-14T09:05:00Z available_at=2026-09-14T09:20:30Z edited_at=2026-09-14T09:20:00Z deleted_at=- reply_to_message_id=alpha-m1\nYes, I will send the corrected estimate by Friday 15:00.",
+            "metadata": {
+              "project": "alpha",
+              "chat_id": "chat-alpha",
+              "message_id": "alpha-m2",
+              "revision": 2,
+              "author_id": "emp-alpha-alex",
+              "author": "Alex",
+              "side": "employee",
+              "sent_at": "2026-09-14T09:05:00Z",
+              "available_at": "2026-09-14T09:20:30Z",
+              "edited_at": "2026-09-14T09:20:00Z",
+              "deleted_at": null,
+              "reply_to_message_id": "alpha-m1",
+              "data_id": "34e378a6-6ccf-53f3-9c76-edebf4216262"
+            },
+            "message_id": "alpha-m2",
+            "revision": 2
+          },
+          {
+            "data_id": "701ef07f-3b1d-5f04-a529-3b2964d92f81",
+            "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m3 revision=1 author_id=emp-alpha-alex author=Alex side=employee sent_at=2026-09-15T08:00:00Z available_at=2026-09-15T08:00:30Z edited_at=- deleted_at=- reply_to_message_id=alpha-m2\nI need to move the estimate to Monday 12:00.",
+            "metadata": {
+              "project": "alpha",
+              "chat_id": "chat-alpha",
+              "message_id": "alpha-m3",
+              "revision": 1,
+              "author_id": "emp-alpha-alex",
+              "author": "Alex",
+              "side": "employee",
+              "sent_at": "2026-09-15T08:00:00Z",
+              "available_at": "2026-09-15T08:00:30Z",
+              "edited_at": null,
+              "deleted_at": null,
+              "reply_to_message_id": "alpha-m2",
+              "data_id": "701ef07f-3b1d-5f04-a529-3b2964d92f81"
+            },
+            "message_id": "alpha-m3",
+            "revision": 1
+          },
+          {
+            "data_id": "80c3f203-3648-5ac9-a78a-bcf3db7f2745",
+            "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m4 revision=1 author_id=emp-alpha-alex author=Alex side=employee sent_at=2026-09-15T09:00:00Z available_at=2026-09-15T09:00:30Z edited_at=- deleted_at=- reply_to_message_id=alpha-m2\nThe customer cancelled the estimate request; the promise is cancelled.",
+            "metadata": {
+              "project": "alpha",
+              "chat_id": "chat-alpha",
+              "message_id": "alpha-m4",
+              "revision": 1,
+              "author_id": "emp-alpha-alex",
+              "author": "Alex",
+              "side": "employee",
+              "sent_at": "2026-09-15T09:00:00Z",
+              "available_at": "2026-09-15T09:00:30Z",
+              "edited_at": null,
+              "deleted_at": null,
+              "reply_to_message_id": "alpha-m2",
+              "data_id": "80c3f203-3648-5ac9-a78a-bcf3db7f2745"
+            },
+            "message_id": "alpha-m4",
+            "revision": 1
+          },
+          {
+            "data_id": "26867c65-28eb-5c45-b214-847eb53f0e7a",
+            "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m5 revision=1 author_id=cust-alpha-sam author=Sam side=customer sent_at=2026-09-16T10:00:00Z available_at=2026-09-16T10:00:30Z edited_at=- deleted_at=- reply_to_message_id=alpha-m4\nWe received the estimate late; this was a problem.",
+            "metadata": {
+              "project": "alpha",
+              "chat_id": "chat-alpha",
+              "message_id": "alpha-m5",
+              "revision": 1,
+              "author_id": "cust-alpha-sam",
+              "author": "Sam",
+              "side": "customer",
+              "sent_at": "2026-09-16T10:00:00Z",
+              "available_at": "2026-09-16T10:00:30Z",
+              "edited_at": null,
+              "deleted_at": null,
+              "reply_to_message_id": "alpha-m4",
+              "data_id": "26867c65-28eb-5c45-b214-847eb53f0e7a"
+            },
+            "message_id": "alpha-m5",
+            "revision": 1
+          }
+        ],
+        "excluded": [
+          {
+            "message_id": "alpha-m2",
+            "revision": "1",
+            "reason": "superseded_revision"
+          },
+          {
+            "message_id": "alpha-m6",
+            "revision": "1",
+            "reason": "deleted_source"
+          }
+        ],
+        "source_max_available_at": "2026-09-16T10:00:30Z"
+      },
+      {
+        "name": "af024-beta-20260918T000000Z",
+        "project_id": "beta",
+        "as_of": "2026-09-18T00:00:00Z",
+        "discussion_ids": [
+          {
+            "message_id": "beta-m1",
+            "revision": 1
+          },
+          {
+            "message_id": "beta-m2",
+            "revision": 1
+          },
+          {
+            "message_id": "beta-m3",
+            "revision": 1
+          },
+          {
+            "message_id": "beta-m4",
+            "revision": 1
+          }
+        ],
+        "items": [
+          {
+            "data_id": "7c95ad38-34b8-59a1-b419-7e8ae12c9d07",
+            "text": "[actionflow] project=beta chat_id=chat-beta message_id=beta-m1 revision=1 author_id=cust-beta-sam author=Sam side=customer sent_at=2026-09-14T09:00:00Z available_at=2026-09-14T09:00:30Z edited_at=- deleted_at=- reply_to_message_id=-\nCan you send the signed contract by Friday?",
+            "metadata": {
+              "project": "beta",
+              "chat_id": "chat-beta",
+              "message_id": "beta-m1",
+              "revision": 1,
+              "author_id": "cust-beta-sam",
+              "author": "Sam",
+              "side": "customer",
+              "sent_at": "2026-09-14T09:00:00Z",
+              "available_at": "2026-09-14T09:00:30Z",
+              "edited_at": null,
+              "deleted_at": null,
+              "reply_to_message_id": null,
+              "data_id": "7c95ad38-34b8-59a1-b419-7e8ae12c9d07"
+            },
+            "message_id": "beta-m1",
+            "revision": 1
+          },
+          {
+            "data_id": "36efff36-dbad-5dc0-93db-d525e1991e16",
+            "text": "[actionflow] project=beta chat_id=chat-beta message_id=beta-m2 revision=1 author_id=emp-beta-alex author=Alex side=employee sent_at=2026-09-14T09:10:00Z available_at=2026-09-14T09:10:30Z edited_at=- deleted_at=- reply_to_message_id=beta-m1\nI will send the signed contract by Thursday 17:00.",
+            "metadata": {
+              "project": "beta",
+              "chat_id": "chat-beta",
+              "message_id": "beta-m2",
+              "revision": 1,
+              "author_id": "emp-beta-alex",
+              "author": "Alex",
+              "side": "employee",
+              "sent_at": "2026-09-14T09:10:00Z",
+              "available_at": "2026-09-14T09:10:30Z",
+              "edited_at": null,
+              "deleted_at": null,
+              "reply_to_message_id": "beta-m1",
+              "data_id": "36efff36-dbad-5dc0-93db-d525e1991e16"
+            },
+            "message_id": "beta-m2",
+            "revision": 1
+          },
+          {
+            "data_id": "c0de3130-5cbf-5249-9faf-6373d2ae3f7b",
+            "text": "[actionflow] project=beta chat_id=chat-beta message_id=beta-m3 revision=1 author_id=emp-beta-alex author=Alex side=employee sent_at=2026-09-15T08:30:00Z available_at=2026-09-15T08:30:30Z edited_at=- deleted_at=- reply_to_message_id=beta-m2\nThe signed contract was sent on Wednesday.",
+            "metadata": {
+              "project": "beta",
+              "chat_id": "chat-beta",
+              "message_id": "beta-m3",
+              "revision": 1,
+              "author_id": "emp-beta-alex",
+              "author": "Alex",
+              "side": "employee",
+              "sent_at": "2026-09-15T08:30:00Z",
+              "available_at": "2026-09-15T08:30:30Z",
+              "edited_at": null,
+              "deleted_at": null,
+              "reply_to_message_id": "beta-m2",
+              "data_id": "c0de3130-5cbf-5249-9faf-6373d2ae3f7b"
+            },
+            "message_id": "beta-m3",
+            "revision": 1
+          },
+          {
+            "data_id": "b1035c8f-4e1a-52e4-84d1-d88015893517",
+            "text": "[actionflow] project=beta chat_id=chat-beta message_id=beta-m4 revision=1 author_id=cust-beta-sam author=Sam side=customer sent_at=2026-09-16T10:00:00Z available_at=2026-09-16T10:00:30Z edited_at=- deleted_at=- reply_to_message_id=beta-m3\nThe contract arrived late; we need a new date.",
+            "metadata": {
+              "project": "beta",
+              "chat_id": "chat-beta",
+              "message_id": "beta-m4",
+              "revision": 1,
+              "author_id": "cust-beta-sam",
+              "author": "Sam",
+              "side": "customer",
+              "sent_at": "2026-09-16T10:00:00Z",
+              "available_at": "2026-09-16T10:00:30Z",
+              "edited_at": null,
+              "deleted_at": null,
+              "reply_to_message_id": "beta-m3",
+              "data_id": "b1035c8f-4e1a-52e4-84d1-d88015893517"
+            },
+            "message_id": "beta-m4",
+            "revision": 1
+          }
+        ],
+        "excluded": [],
+        "source_max_available_at": "2026-09-16T10:00:30Z"
+      }
+    ]
+  },
+  "ingestion": {
+    "af024-alpha-20260914T091200Z": {
+      "name": "af024-alpha-20260914T091200Z",
+      "project_id": "alpha",
+      "as_of": "2026-09-14T09:12:00Z",
+      "item_count": 3,
+      "stored_data_count": 3,
+      "data_ids": [
+        "22b57b7a-e4b6-53f3-9ae1-13d69fe8ed57",
+        "89dbc862-1634-5c42-a179-08d98eb8724b",
+        "afa20cd1-c29c-5206-8896-7311f6aa9160"
+      ],
+      "add_seconds": 20.98,
+      "cognify_seconds": 50.47,
+      "total_seconds": 71.45,
+      "source_max_available_at": "2026-09-14T09:06:30Z",
+      "indexed_at": "2026-11-22T22:58:59Z"
+    },
+    "af024-beta-20260914T091200Z": {
+      "name": "af024-beta-20260914T091200Z",
+      "project_id": "beta",
+      "as_of": "2026-09-14T09:12:00Z",
+      "item_count": 2,
+      "stored_data_count": 2,
+      "data_ids": [
+        "2cce4bbd-6b98-5940-a480-84a3088539bc",
+        "e492e028-f148-5854-9603-e453be554f31"
+      ],
+      "add_seconds": 3.66,
+      "cognify_seconds": 34.78,
+      "total_seconds": 38.44,
+      "source_max_available_at": "2026-09-14T09:10:30Z",
+      "indexed_at": "2026-11-22T22:59:37Z"
+    },
+    "af024-alpha-20260918T000000Z": {
+      "name": "af024-alpha-20260918T000000Z",
+      "project_id": "alpha",
+      "as_of": "2026-09-18T00:00:00Z",
+      "item_count": 5,
+      "stored_data_count": 5,
+      "data_ids": [
+        "26867c65-28eb-5c45-b214-847eb53f0e7a",
+        "34e378a6-6ccf-53f3-9c76-edebf4216262",
+        "701ef07f-3b1d-5f04-a529-3b2964d92f81",
+        "80c3f203-3648-5ac9-a78a-bcf3db7f2745",
+        "f022cf91-ba01-5714-9059-0e9380fed3c7"
+      ],
+      "add_seconds": 2.05,
+      "cognify_seconds": 50.34,
+      "total_seconds": 52.39,
+      "source_max_available_at": "2026-09-16T10:00:30Z",
+      "indexed_at": "2026-11-22T23:00:30Z"
+    },
+    "af024-beta-20260918T000000Z": {
+      "name": "af024-beta-20260918T000000Z",
+      "project_id": "beta",
+      "as_of": "2026-09-18T00:00:00Z",
+      "item_count": 4,
+      "stored_data_count": 4,
+      "data_ids": [
+        "36efff36-dbad-5dc0-93db-d525e1991e16",
+        "7c95ad38-34b8-59a1-b419-7e8ae12c9d07",
+        "b1035c8f-4e1a-52e4-84d1-d88015893517",
+        "c0de3130-5cbf-5249-9faf-6373d2ae3f7b"
+      ],
+      "add_seconds": 1.69,
+      "cognify_seconds": 28.74,
+      "total_seconds": 30.43,
+      "source_max_available_at": "2026-09-16T10:00:30Z",
+      "indexed_at": "2026-11-22T23:01:00Z"
+    }
+  },
+  "queries": [
+    {
+      "id": "early_alpha_promise_and_edit_slice",
+      "dataset": "af024-alpha-20260914T091200Z",
+      "project_id": "alpha",
+      "as_of": "2026-09-14T09:12:00Z",
+      "query": "What did Alex promise about the estimate deadline?",
+      "elapsed_ms": 477.8,
+      "result_count": 3,
+      "rows": [
+        {
+          "result_id": "8e8d1fb1-297b-5e02-a5d4-7e3f5d28d3bc",
+          "source_chunk_id": null,
+          "message_id": "alpha-m2",
+          "revision": 1,
+          "project_id": "alpha",
+          "author_id": "emp-alpha-alex",
+          "sent_at": "2026-09-14T09:05:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m2 revision=1 author_id=emp-alpha-alex author=Alex side=employee sent_at=2026-09-14T09:05:00Z available_at=2026-09-14T09:05:30Z edited_at=- deleted_at=- reply_to_message_id=alpha-m1\nYes, I will send the corrected estimate by Friday 12:00."
+        },
+        {
+          "result_id": "6659cc19-028c-508c-b5a2-524ae72c1669",
+          "source_chunk_id": null,
+          "message_id": "alpha-m6",
+          "revision": 1,
+          "project_id": "alpha",
+          "author_id": "emp-alpha-alex",
+          "sent_at": "2026-09-14T09:06:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m6 revision=1 author_id=emp-alpha-alex author=Alex side=employee sent_at=2026-09-14T09:06:00Z available_at=2026-09-14T09:06:30Z edited_at=- deleted_at=2026-09-15T12:00:00Z reply_to_message_id=-\nTemporary draft: the old estimate amount was 1000."
+        },
+        {
+          "result_id": "e10439dc-5ad1-5604-a894-0359265a0b3e",
+          "source_chunk_id": null,
+          "message_id": "alpha-m1",
+          "revision": 1,
+          "project_id": "alpha",
+          "author_id": "cust-alpha-sam",
+          "sent_at": "2026-09-14T09:00:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m1 revision=1 author_id=cust-alpha-sam author=Sam side=customer sent_at=2026-09-14T09:00:00Z available_at=2026-09-14T09:00:30Z edited_at=- deleted_at=- reply_to_message_id=-\nCan you send the corrected estimate by Friday?"
+        }
+      ],
+      "allowed": [
+        "alpha-m1@r1",
+        "alpha-m2@r1",
+        "alpha-m6@r1"
+      ],
+      "outside_dataset": [],
+      "unresolved": [],
+      "inconsistent": [],
+      "present": {
+        "alpha-m2@r1": true
+      },
+      "absent": {
+        "alpha-m2@r2": true,
+        "alpha-m3@r1": true,
+        "alpha-m4@r1": true,
+        "alpha-m5@r1": true
+      },
+      "later": {},
+      "passed": true
+    },
+    {
+      "id": "early_alpha_deleted_source_present",
+      "dataset": "af024-alpha-20260914T091200Z",
+      "project_id": "alpha",
+      "as_of": "2026-09-14T09:12:00Z",
+      "query": "What was the old estimate amount in the temporary draft?",
+      "elapsed_ms": 212.8,
+      "result_count": 3,
+      "rows": [
+        {
+          "result_id": "6659cc19-028c-508c-b5a2-524ae72c1669",
+          "source_chunk_id": null,
+          "message_id": "alpha-m6",
+          "revision": 1,
+          "project_id": "alpha",
+          "author_id": "emp-alpha-alex",
+          "sent_at": "2026-09-14T09:06:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m6 revision=1 author_id=emp-alpha-alex author=Alex side=employee sent_at=2026-09-14T09:06:00Z available_at=2026-09-14T09:06:30Z edited_at=- deleted_at=2026-09-15T12:00:00Z reply_to_message_id=-\nTemporary draft: the old estimate amount was 1000."
+        },
+        {
+          "result_id": "8e8d1fb1-297b-5e02-a5d4-7e3f5d28d3bc",
+          "source_chunk_id": null,
+          "message_id": "alpha-m2",
+          "revision": 1,
+          "project_id": "alpha",
+          "author_id": "emp-alpha-alex",
+          "sent_at": "2026-09-14T09:05:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m2 revision=1 author_id=emp-alpha-alex author=Alex side=employee sent_at=2026-09-14T09:05:00Z available_at=2026-09-14T09:05:30Z edited_at=- deleted_at=- reply_to_message_id=alpha-m1\nYes, I will send the corrected estimate by Friday 12:00."
+        },
+        {
+          "result_id": "e10439dc-5ad1-5604-a894-0359265a0b3e",
+          "source_chunk_id": null,
+          "message_id": "alpha-m1",
+          "revision": 1,
+          "project_id": "alpha",
+          "author_id": "cust-alpha-sam",
+          "sent_at": "2026-09-14T09:00:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m1 revision=1 author_id=cust-alpha-sam author=Sam side=customer sent_at=2026-09-14T09:00:00Z available_at=2026-09-14T09:00:30Z edited_at=- deleted_at=- reply_to_message_id=-\nCan you send the corrected estimate by Friday?"
+        }
+      ],
+      "allowed": [
+        "alpha-m1@r1",
+        "alpha-m2@r1",
+        "alpha-m6@r1"
+      ],
+      "outside_dataset": [],
+      "unresolved": [],
+      "inconsistent": [],
+      "present": {
+        "alpha-m6@r1": true
+      },
+      "absent": {},
+      "later": {},
+      "passed": true
+    },
+    {
+      "id": "early_beta_promise",
+      "dataset": "af024-beta-20260914T091200Z",
+      "project_id": "beta",
+      "as_of": "2026-09-14T09:12:00Z",
+      "query": "What did Alex promise about the signed contract?",
+      "elapsed_ms": 366.5,
+      "result_count": 2,
+      "rows": [
+        {
+          "result_id": "d8a26588-1478-55c2-bb65-d61ae38a3b03",
+          "source_chunk_id": null,
+          "message_id": "beta-m2",
+          "revision": 1,
+          "project_id": "beta",
+          "author_id": "emp-beta-alex",
+          "sent_at": "2026-09-14T09:10:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=beta chat_id=chat-beta message_id=beta-m2 revision=1 author_id=emp-beta-alex author=Alex side=employee sent_at=2026-09-14T09:10:00Z available_at=2026-09-14T09:10:30Z edited_at=- deleted_at=- reply_to_message_id=beta-m1\nI will send the signed contract by Thursday 17:00."
+        },
+        {
+          "result_id": "033608f2-bdf1-5abb-8b04-d161b2182cdc",
+          "source_chunk_id": null,
+          "message_id": "beta-m1",
+          "revision": 1,
+          "project_id": "beta",
+          "author_id": "cust-beta-sam",
+          "sent_at": "2026-09-14T09:00:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=beta chat_id=chat-beta message_id=beta-m1 revision=1 author_id=cust-beta-sam author=Sam side=customer sent_at=2026-09-14T09:00:00Z available_at=2026-09-14T09:00:30Z edited_at=- deleted_at=- reply_to_message_id=-\nCan you send the signed contract by Friday?"
+        }
+      ],
+      "allowed": [
+        "beta-m1@r1",
+        "beta-m2@r1"
+      ],
+      "outside_dataset": [],
+      "unresolved": [],
+      "inconsistent": [],
+      "present": {
+        "beta-m2@r1": true
+      },
+      "absent": {
+        "beta-m3@r1": true,
+        "beta-m4@r1": true
+      },
+      "later": {},
+      "passed": true
+    },
+    {
+      "id": "final_alpha_revision_and_changes",
+      "dataset": "af024-alpha-20260918T000000Z",
+      "project_id": "alpha",
+      "as_of": "2026-09-18T00:00:00Z",
+      "query": "What was the final estimate deadline, and was the promise moved or cancelled?",
+      "elapsed_ms": 309.0,
+      "result_count": 5,
+      "rows": [
+        {
+          "result_id": "402dcdc0-e32b-518f-a531-084acae38023",
+          "source_chunk_id": null,
+          "message_id": "alpha-m4",
+          "revision": 1,
+          "project_id": "alpha",
+          "author_id": "emp-alpha-alex",
+          "sent_at": "2026-09-15T09:00:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m4 revision=1 author_id=emp-alpha-alex author=Alex side=employee sent_at=2026-09-15T09:00:00Z available_at=2026-09-15T09:00:30Z edited_at=- deleted_at=- reply_to_message_id=alpha-m2\nThe customer cancelled the estimate request; the promise is cancelled."
+        },
+        {
+          "result_id": "c42c3758-c1b2-54fd-a5a7-87b0e336fe8e",
+          "source_chunk_id": null,
+          "message_id": "alpha-m5",
+          "revision": 1,
+          "project_id": "alpha",
+          "author_id": "cust-alpha-sam",
+          "sent_at": "2026-09-16T10:00:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m5 revision=1 author_id=cust-alpha-sam author=Sam side=customer sent_at=2026-09-16T10:00:00Z available_at=2026-09-16T10:00:30Z edited_at=- deleted_at=- reply_to_message_id=alpha-m4\nWe received the estimate late; this was a problem."
+        },
+        {
+          "result_id": "8f5cdf14-f2ec-5eda-b845-555c71539542",
+          "source_chunk_id": null,
+          "message_id": "alpha-m1",
+          "revision": 1,
+          "project_id": "alpha",
+          "author_id": "cust-alpha-sam",
+          "sent_at": "2026-09-14T09:00:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m1 revision=1 author_id=cust-alpha-sam author=Sam side=customer sent_at=2026-09-14T09:00:00Z available_at=2026-09-14T09:00:30Z edited_at=- deleted_at=- reply_to_message_id=-\nCan you send the corrected estimate by Friday?"
+        },
+        {
+          "result_id": "27057b60-d8b0-5ad2-81d3-a9146e802029",
+          "source_chunk_id": null,
+          "message_id": "alpha-m2",
+          "revision": 2,
+          "project_id": "alpha",
+          "author_id": "emp-alpha-alex",
+          "sent_at": "2026-09-14T09:05:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m2 revision=2 author_id=emp-alpha-alex author=Alex side=employee sent_at=2026-09-14T09:05:00Z available_at=2026-09-14T09:20:30Z edited_at=2026-09-14T09:20:00Z deleted_at=- reply_to_message_id=alpha-m1\nYes, I will send the corrected estimate by Friday 15:00."
+        },
+        {
+          "result_id": "7f1e40ed-084a-5bc6-9fa6-5054981f91a3",
+          "source_chunk_id": null,
+          "message_id": "alpha-m3",
+          "revision": 1,
+          "project_id": "alpha",
+          "author_id": "emp-alpha-alex",
+          "sent_at": "2026-09-15T08:00:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m3 revision=1 author_id=emp-alpha-alex author=Alex side=employee sent_at=2026-09-15T08:00:00Z available_at=2026-09-15T08:00:30Z edited_at=- deleted_at=- reply_to_message_id=alpha-m2\nI need to move the estimate to Monday 12:00."
+        }
+      ],
+      "allowed": [
+        "alpha-m1@r1",
+        "alpha-m2@r2",
+        "alpha-m3@r1",
+        "alpha-m4@r1",
+        "alpha-m5@r1"
+      ],
+      "outside_dataset": [],
+      "unresolved": [],
+      "inconsistent": [],
+      "present": {
+        "alpha-m2@r2": true,
+        "alpha-m3@r1": true,
+        "alpha-m4@r1": true
+      },
+      "absent": {
+        "alpha-m2@r1": true,
+        "alpha-m6@r1": true
+      },
+      "later": {},
+      "passed": true
+    },
+    {
+      "id": "final_alpha_late_reply",
+      "dataset": "af024-alpha-20260918T000000Z",
+      "project_id": "alpha",
+      "as_of": "2026-09-18T00:00:00Z",
+      "query": "What did the customer say after the estimate was late?",
+      "elapsed_ms": 219.6,
+      "result_count": 5,
+      "rows": [
+        {
+          "result_id": "c42c3758-c1b2-54fd-a5a7-87b0e336fe8e",
+          "source_chunk_id": null,
+          "message_id": "alpha-m5",
+          "revision": 1,
+          "project_id": "alpha",
+          "author_id": "cust-alpha-sam",
+          "sent_at": "2026-09-16T10:00:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m5 revision=1 author_id=cust-alpha-sam author=Sam side=customer sent_at=2026-09-16T10:00:00Z available_at=2026-09-16T10:00:30Z edited_at=- deleted_at=- reply_to_message_id=alpha-m4\nWe received the estimate late; this was a problem."
+        },
+        {
+          "result_id": "402dcdc0-e32b-518f-a531-084acae38023",
+          "source_chunk_id": null,
+          "message_id": "alpha-m4",
+          "revision": 1,
+          "project_id": "alpha",
+          "author_id": "emp-alpha-alex",
+          "sent_at": "2026-09-15T09:00:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m4 revision=1 author_id=emp-alpha-alex author=Alex side=employee sent_at=2026-09-15T09:00:00Z available_at=2026-09-15T09:00:30Z edited_at=- deleted_at=- reply_to_message_id=alpha-m2\nThe customer cancelled the estimate request; the promise is cancelled."
+        },
+        {
+          "result_id": "8f5cdf14-f2ec-5eda-b845-555c71539542",
+          "source_chunk_id": null,
+          "message_id": "alpha-m1",
+          "revision": 1,
+          "project_id": "alpha",
+          "author_id": "cust-alpha-sam",
+          "sent_at": "2026-09-14T09:00:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m1 revision=1 author_id=cust-alpha-sam author=Sam side=customer sent_at=2026-09-14T09:00:00Z available_at=2026-09-14T09:00:30Z edited_at=- deleted_at=- reply_to_message_id=-\nCan you send the corrected estimate by Friday?"
+        },
+        {
+          "result_id": "27057b60-d8b0-5ad2-81d3-a9146e802029",
+          "source_chunk_id": null,
+          "message_id": "alpha-m2",
+          "revision": 2,
+          "project_id": "alpha",
+          "author_id": "emp-alpha-alex",
+          "sent_at": "2026-09-14T09:05:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m2 revision=2 author_id=emp-alpha-alex author=Alex side=employee sent_at=2026-09-14T09:05:00Z available_at=2026-09-14T09:20:30Z edited_at=2026-09-14T09:20:00Z deleted_at=- reply_to_message_id=alpha-m1\nYes, I will send the corrected estimate by Friday 15:00."
+        },
+        {
+          "result_id": "7f1e40ed-084a-5bc6-9fa6-5054981f91a3",
+          "source_chunk_id": null,
+          "message_id": "alpha-m3",
+          "revision": 1,
+          "project_id": "alpha",
+          "author_id": "emp-alpha-alex",
+          "sent_at": "2026-09-15T08:00:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m3 revision=1 author_id=emp-alpha-alex author=Alex side=employee sent_at=2026-09-15T08:00:00Z available_at=2026-09-15T08:00:30Z edited_at=- deleted_at=- reply_to_message_id=alpha-m2\nI need to move the estimate to Monday 12:00."
+        }
+      ],
+      "allowed": [
+        "alpha-m1@r1",
+        "alpha-m2@r2",
+        "alpha-m3@r1",
+        "alpha-m4@r1",
+        "alpha-m5@r1"
+      ],
+      "outside_dataset": [],
+      "unresolved": [],
+      "inconsistent": [],
+      "present": {
+        "alpha-m5@r1": true
+      },
+      "absent": {},
+      "later": {},
+      "passed": true
+    },
+    {
+      "id": "final_alpha_deleted_source_absent",
+      "dataset": "af024-alpha-20260918T000000Z",
+      "project_id": "alpha",
+      "as_of": "2026-09-18T00:00:00Z",
+      "query": "What was the old estimate amount in the temporary draft?",
+      "elapsed_ms": 215.9,
+      "result_count": 5,
+      "rows": [
+        {
+          "result_id": "c42c3758-c1b2-54fd-a5a7-87b0e336fe8e",
+          "source_chunk_id": null,
+          "message_id": "alpha-m5",
+          "revision": 1,
+          "project_id": "alpha",
+          "author_id": "cust-alpha-sam",
+          "sent_at": "2026-09-16T10:00:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m5 revision=1 author_id=cust-alpha-sam author=Sam side=customer sent_at=2026-09-16T10:00:00Z available_at=2026-09-16T10:00:30Z edited_at=- deleted_at=- reply_to_message_id=alpha-m4\nWe received the estimate late; this was a problem."
+        },
+        {
+          "result_id": "27057b60-d8b0-5ad2-81d3-a9146e802029",
+          "source_chunk_id": null,
+          "message_id": "alpha-m2",
+          "revision": 2,
+          "project_id": "alpha",
+          "author_id": "emp-alpha-alex",
+          "sent_at": "2026-09-14T09:05:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m2 revision=2 author_id=emp-alpha-alex author=Alex side=employee sent_at=2026-09-14T09:05:00Z available_at=2026-09-14T09:20:30Z edited_at=2026-09-14T09:20:00Z deleted_at=- reply_to_message_id=alpha-m1\nYes, I will send the corrected estimate by Friday 15:00."
+        },
+        {
+          "result_id": "8f5cdf14-f2ec-5eda-b845-555c71539542",
+          "source_chunk_id": null,
+          "message_id": "alpha-m1",
+          "revision": 1,
+          "project_id": "alpha",
+          "author_id": "cust-alpha-sam",
+          "sent_at": "2026-09-14T09:00:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m1 revision=1 author_id=cust-alpha-sam author=Sam side=customer sent_at=2026-09-14T09:00:00Z available_at=2026-09-14T09:00:30Z edited_at=- deleted_at=- reply_to_message_id=-\nCan you send the corrected estimate by Friday?"
+        },
+        {
+          "result_id": "402dcdc0-e32b-518f-a531-084acae38023",
+          "source_chunk_id": null,
+          "message_id": "alpha-m4",
+          "revision": 1,
+          "project_id": "alpha",
+          "author_id": "emp-alpha-alex",
+          "sent_at": "2026-09-15T09:00:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m4 revision=1 author_id=emp-alpha-alex author=Alex side=employee sent_at=2026-09-15T09:00:00Z available_at=2026-09-15T09:00:30Z edited_at=- deleted_at=- reply_to_message_id=alpha-m2\nThe customer cancelled the estimate request; the promise is cancelled."
+        },
+        {
+          "result_id": "7f1e40ed-084a-5bc6-9fa6-5054981f91a3",
+          "source_chunk_id": null,
+          "message_id": "alpha-m3",
+          "revision": 1,
+          "project_id": "alpha",
+          "author_id": "emp-alpha-alex",
+          "sent_at": "2026-09-15T08:00:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m3 revision=1 author_id=emp-alpha-alex author=Alex side=employee sent_at=2026-09-15T08:00:00Z available_at=2026-09-15T08:00:30Z edited_at=- deleted_at=- reply_to_message_id=alpha-m2\nI need to move the estimate to Monday 12:00."
+        }
+      ],
+      "allowed": [
+        "alpha-m1@r1",
+        "alpha-m2@r2",
+        "alpha-m3@r1",
+        "alpha-m4@r1",
+        "alpha-m5@r1"
+      ],
+      "outside_dataset": [],
+      "unresolved": [],
+      "inconsistent": [],
+      "present": {},
+      "absent": {
+        "alpha-m6@r1": true
+      },
+      "later": {},
+      "passed": true
+    },
+    {
+      "id": "final_beta_contract_only",
+      "dataset": "af024-beta-20260918T000000Z",
+      "project_id": "beta",
+      "as_of": "2026-09-18T00:00:00Z",
+      "query": "What did Sam and Alex agree about the contract?",
+      "elapsed_ms": 328.9,
+      "result_count": 4,
+      "rows": [
+        {
+          "result_id": "c571ddfa-d165-52ed-9a27-b081d66c9b57",
+          "source_chunk_id": null,
+          "message_id": "beta-m3",
+          "revision": 1,
+          "project_id": "beta",
+          "author_id": "emp-beta-alex",
+          "sent_at": "2026-09-15T08:30:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=beta chat_id=chat-beta message_id=beta-m3 revision=1 author_id=emp-beta-alex author=Alex side=employee sent_at=2026-09-15T08:30:00Z available_at=2026-09-15T08:30:30Z edited_at=- deleted_at=- reply_to_message_id=beta-m2\nThe signed contract was sent on Wednesday."
+        },
+        {
+          "result_id": "79ae16d9-5f27-5419-ac44-7a7a279379e3",
+          "source_chunk_id": null,
+          "message_id": "beta-m2",
+          "revision": 1,
+          "project_id": "beta",
+          "author_id": "emp-beta-alex",
+          "sent_at": "2026-09-14T09:10:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=beta chat_id=chat-beta message_id=beta-m2 revision=1 author_id=emp-beta-alex author=Alex side=employee sent_at=2026-09-14T09:10:00Z available_at=2026-09-14T09:10:30Z edited_at=- deleted_at=- reply_to_message_id=beta-m1\nI will send the signed contract by Thursday 17:00."
+        },
+        {
+          "result_id": "2abfb219-6df2-5466-b396-d2e705a903d7",
+          "source_chunk_id": null,
+          "message_id": "beta-m1",
+          "revision": 1,
+          "project_id": "beta",
+          "author_id": "cust-beta-sam",
+          "sent_at": "2026-09-14T09:00:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=beta chat_id=chat-beta message_id=beta-m1 revision=1 author_id=cust-beta-sam author=Sam side=customer sent_at=2026-09-14T09:00:00Z available_at=2026-09-14T09:00:30Z edited_at=- deleted_at=- reply_to_message_id=-\nCan you send the signed contract by Friday?"
+        },
+        {
+          "result_id": "5cf61b85-800a-5ba6-9df3-cddb03928a56",
+          "source_chunk_id": null,
+          "message_id": "beta-m4",
+          "revision": 1,
+          "project_id": "beta",
+          "author_id": "cust-beta-sam",
+          "sent_at": "2026-09-16T10:00:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=beta chat_id=chat-beta message_id=beta-m4 revision=1 author_id=cust-beta-sam author=Sam side=customer sent_at=2026-09-16T10:00:00Z available_at=2026-09-16T10:00:30Z edited_at=- deleted_at=- reply_to_message_id=beta-m3\nThe contract arrived late; we need a new date."
+        }
+      ],
+      "allowed": [
+        "beta-m1@r1",
+        "beta-m2@r1",
+        "beta-m3@r1",
+        "beta-m4@r1"
+      ],
+      "outside_dataset": [],
+      "unresolved": [],
+      "inconsistent": [],
+      "present": {
+        "beta-m2@r1": true,
+        "beta-m3@r1": true
+      },
+      "absent": {
+        "alpha-m1@r1": true,
+        "alpha-m2@r2": true
+      },
+      "later": {},
+      "passed": true
+    },
+    {
+      "id": "final_alpha_estimate_only",
+      "dataset": "af024-alpha-20260918T000000Z",
+      "project_id": "alpha",
+      "as_of": "2026-09-18T00:00:00Z",
+      "query": "What did Sam and Alex agree about the estimate?",
+      "elapsed_ms": 234.6,
+      "result_count": 5,
+      "rows": [
+        {
+          "result_id": "c42c3758-c1b2-54fd-a5a7-87b0e336fe8e",
+          "source_chunk_id": null,
+          "message_id": "alpha-m5",
+          "revision": 1,
+          "project_id": "alpha",
+          "author_id": "cust-alpha-sam",
+          "sent_at": "2026-09-16T10:00:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m5 revision=1 author_id=cust-alpha-sam author=Sam side=customer sent_at=2026-09-16T10:00:00Z available_at=2026-09-16T10:00:30Z edited_at=- deleted_at=- reply_to_message_id=alpha-m4\nWe received the estimate late; this was a problem."
+        },
+        {
+          "result_id": "27057b60-d8b0-5ad2-81d3-a9146e802029",
+          "source_chunk_id": null,
+          "message_id": "alpha-m2",
+          "revision": 2,
+          "project_id": "alpha",
+          "author_id": "emp-alpha-alex",
+          "sent_at": "2026-09-14T09:05:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m2 revision=2 author_id=emp-alpha-alex author=Alex side=employee sent_at=2026-09-14T09:05:00Z available_at=2026-09-14T09:20:30Z edited_at=2026-09-14T09:20:00Z deleted_at=- reply_to_message_id=alpha-m1\nYes, I will send the corrected estimate by Friday 15:00."
+        },
+        {
+          "result_id": "8f5cdf14-f2ec-5eda-b845-555c71539542",
+          "source_chunk_id": null,
+          "message_id": "alpha-m1",
+          "revision": 1,
+          "project_id": "alpha",
+          "author_id": "cust-alpha-sam",
+          "sent_at": "2026-09-14T09:00:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m1 revision=1 author_id=cust-alpha-sam author=Sam side=customer sent_at=2026-09-14T09:00:00Z available_at=2026-09-14T09:00:30Z edited_at=- deleted_at=- reply_to_message_id=-\nCan you send the corrected estimate by Friday?"
+        },
+        {
+          "result_id": "402dcdc0-e32b-518f-a531-084acae38023",
+          "source_chunk_id": null,
+          "message_id": "alpha-m4",
+          "revision": 1,
+          "project_id": "alpha",
+          "author_id": "emp-alpha-alex",
+          "sent_at": "2026-09-15T09:00:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m4 revision=1 author_id=emp-alpha-alex author=Alex side=employee sent_at=2026-09-15T09:00:00Z available_at=2026-09-15T09:00:30Z edited_at=- deleted_at=- reply_to_message_id=alpha-m2\nThe customer cancelled the estimate request; the promise is cancelled."
+        },
+        {
+          "result_id": "7f1e40ed-084a-5bc6-9fa6-5054981f91a3",
+          "source_chunk_id": null,
+          "message_id": "alpha-m3",
+          "revision": 1,
+          "project_id": "alpha",
+          "author_id": "emp-alpha-alex",
+          "sent_at": "2026-09-15T08:00:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m3 revision=1 author_id=emp-alpha-alex author=Alex side=employee sent_at=2026-09-15T08:00:00Z available_at=2026-09-15T08:00:30Z edited_at=- deleted_at=- reply_to_message_id=alpha-m2\nI need to move the estimate to Monday 12:00."
+        }
+      ],
+      "allowed": [
+        "alpha-m1@r1",
+        "alpha-m2@r2",
+        "alpha-m3@r1",
+        "alpha-m4@r1",
+        "alpha-m5@r1"
+      ],
+      "outside_dataset": [],
+      "unresolved": [],
+      "inconsistent": [],
+      "present": {
+        "alpha-m2@r2": true,
+        "alpha-m3@r1": true
+      },
+      "absent": {
+        "beta-m1@r1": true,
+        "beta-m2@r1": true
+      },
+      "later": {},
+      "passed": true
+    },
+    {
+      "id": "final_alpha_query_with_date_still_sees_later_facts",
+      "dataset": "af024-alpha-20260918T000000Z",
+      "project_id": "alpha",
+      "as_of": "2026-09-18T00:00:00Z",
+      "query": "As of 2026-09-14T09:12Z, what did Alex promise about the estimate?",
+      "elapsed_ms": 211.4,
+      "result_count": 5,
+      "rows": [
+        {
+          "result_id": "402dcdc0-e32b-518f-a531-084acae38023",
+          "source_chunk_id": null,
+          "message_id": "alpha-m4",
+          "revision": 1,
+          "project_id": "alpha",
+          "author_id": "emp-alpha-alex",
+          "sent_at": "2026-09-15T09:00:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m4 revision=1 author_id=emp-alpha-alex author=Alex side=employee sent_at=2026-09-15T09:00:00Z available_at=2026-09-15T09:00:30Z edited_at=- deleted_at=- reply_to_message_id=alpha-m2\nThe customer cancelled the estimate request; the promise is cancelled."
+        },
+        {
+          "result_id": "27057b60-d8b0-5ad2-81d3-a9146e802029",
+          "source_chunk_id": null,
+          "message_id": "alpha-m2",
+          "revision": 2,
+          "project_id": "alpha",
+          "author_id": "emp-alpha-alex",
+          "sent_at": "2026-09-14T09:05:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m2 revision=2 author_id=emp-alpha-alex author=Alex side=employee sent_at=2026-09-14T09:05:00Z available_at=2026-09-14T09:20:30Z edited_at=2026-09-14T09:20:00Z deleted_at=- reply_to_message_id=alpha-m1\nYes, I will send the corrected estimate by Friday 15:00."
+        },
+        {
+          "result_id": "c42c3758-c1b2-54fd-a5a7-87b0e336fe8e",
+          "source_chunk_id": null,
+          "message_id": "alpha-m5",
+          "revision": 1,
+          "project_id": "alpha",
+          "author_id": "cust-alpha-sam",
+          "sent_at": "2026-09-16T10:00:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m5 revision=1 author_id=cust-alpha-sam author=Sam side=customer sent_at=2026-09-16T10:00:00Z available_at=2026-09-16T10:00:30Z edited_at=- deleted_at=- reply_to_message_id=alpha-m4\nWe received the estimate late; this was a problem."
+        },
+        {
+          "result_id": "8f5cdf14-f2ec-5eda-b845-555c71539542",
+          "source_chunk_id": null,
+          "message_id": "alpha-m1",
+          "revision": 1,
+          "project_id": "alpha",
+          "author_id": "cust-alpha-sam",
+          "sent_at": "2026-09-14T09:00:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m1 revision=1 author_id=cust-alpha-sam author=Sam side=customer sent_at=2026-09-14T09:00:00Z available_at=2026-09-14T09:00:30Z edited_at=- deleted_at=- reply_to_message_id=-\nCan you send the corrected estimate by Friday?"
+        },
+        {
+          "result_id": "7f1e40ed-084a-5bc6-9fa6-5054981f91a3",
+          "source_chunk_id": null,
+          "message_id": "alpha-m3",
+          "revision": 1,
+          "project_id": "alpha",
+          "author_id": "emp-alpha-alex",
+          "sent_at": "2026-09-15T08:00:00Z",
+          "attribution_source": "external_metadata",
+          "consistent": true,
+          "text": "[actionflow] project=alpha chat_id=chat-alpha message_id=alpha-m3 revision=1 author_id=emp-alpha-alex author=Alex side=employee sent_at=2026-09-15T08:00:00Z available_at=2026-09-15T08:00:30Z edited_at=- deleted_at=- reply_to_message_id=alpha-m2\nI need to move the estimate to Monday 12:00."
+        }
+      ],
+      "allowed": [
+        "alpha-m1@r1",
+        "alpha-m2@r2",
+        "alpha-m3@r1",
+        "alpha-m4@r1",
+        "alpha-m5@r1"
+      ],
+      "outside_dataset": [],
+      "unresolved": [],
+      "inconsistent": [],
+      "present": {},
+      "absent": {},
+      "later": {
+        "alpha-m3": true,
+        "alpha-m4": true,
+        "alpha-m5": true
+      },
+      "passed": true
+    }
+  ],
+  "summary": {
+    "id": "final_alpha_summary_attribution",
+    "dataset": "af024-alpha-20260918T000000Z",
+    "project_id": "alpha",
+    "as_of": "2026-09-18T00:00:00Z",
+    "query": "What did Alex promise about the estimate deadline?",
+    "chunks_elapsed_ms": 205.7,
+    "elapsed_ms": 255.5,
+    "result_count": 5,
+    "rows": [
+      {
+        "result_id": "73ad4ad5-e6a5-514a-acbd-de81046c07be",
+        "source_chunk_id": "27057b60-d8b0-5ad2-81d3-a9146e802029",
+        "message_id": null,
+        "revision": null,
+        "project_id": null,
+        "author_id": null,
+        "sent_at": null,
+        "attribution_source": "none",
+        "consistent": true,
+        "text": "Timestamp: 2026-09-14 09:05:00, 2026-09-14 09:20:00; date: Friday 15:00; person: Alex; project: alpha; role: employee; software: alpha-m1, alpha-m2, chat-alpha, emp-alpha-alex",
+        "resolved_message_id": "alpha-m2",
+        "resolved_revision": 2,
+        "resolved_project_id": "alpha"
+      },
+      {
+        "result_id": "688aa877-b40a-597c-84c6-a18a56d8a7a2",
+        "source_chunk_id": "7f1e40ed-084a-5bc6-9fa6-5054981f91a3",
+        "message_id": null,
+        "revision": null,
+        "project_id": null,
+        "author_id": null,
+        "sent_at": null,
+        "attribution_source": "none",
+        "consistent": true,
+        "text": "date: Monday 12:00; person: Alex; project: alpha; role: employee; software: alpha-m2, alpha-m3, chat-alpha, emp-alpha-alex",
+        "resolved_message_id": "alpha-m3",
+        "resolved_revision": 1,
+        "resolved_project_id": "alpha"
+      },
+      {
+        "result_id": "6810769c-e9a2-57b4-933c-81e6f9825c1c",
+        "source_chunk_id": "402dcdc0-e32b-518f-a531-084acae38023",
+        "message_id": null,
+        "revision": null,
+        "project_id": null,
+        "author_id": null,
+        "sent_at": null,
+        "attribution_source": "none",
+        "consistent": true,
+        "text": "Timestamp: 2026-09-15 09:00:00, 2026-09-15 09:00:30; person: Alex; project: alpha; role: employee; software: alpha-m2, alpha-m4, chat-alpha, emp-alpha-alex",
+        "resolved_message_id": "alpha-m4",
+        "resolved_revision": 1,
+        "resolved_project_id": "alpha"
+      },
+      {
+        "result_id": "8f4182bb-9029-5d7d-b177-f6f459c166ff",
+        "source_chunk_id": "8f5cdf14-f2ec-5eda-b845-555c71539542",
+        "message_id": null,
+        "revision": null,
+        "project_id": null,
+        "author_id": null,
+        "sent_at": null,
+        "attribution_source": "none",
+        "consistent": true,
+        "text": "date: Friday; person: Sam; project: alpha; software: alpha-m1, chat-alpha, cust-alpha-sam",
+        "resolved_message_id": "alpha-m1",
+        "resolved_revision": 1,
+        "resolved_project_id": "alpha"
+      },
+      {
+        "result_id": "061af25a-4896-54c1-95b7-82fe4be7d81d",
+        "source_chunk_id": "c42c3758-c1b2-54fd-a5a7-87b0e336fe8e",
+        "message_id": null,
+        "revision": null,
+        "project_id": null,
+        "author_id": null,
+        "sent_at": null,
+        "attribution_source": "none",
+        "consistent": true,
+        "text": "Timestamp: 2026-09-16 10:00:00, 2026-09-16 10:00:30; person: Sam; project: alpha; role: author; software: alpha-m4, alpha-m5, chat-alpha, cust-alpha-sam",
+        "resolved_message_id": "alpha-m5",
+        "resolved_revision": 1,
+        "resolved_project_id": "alpha"
+      }
+    ],
+    "allowed": [
+      "alpha-m1@r1",
+      "alpha-m2@r2",
+      "alpha-m3@r1",
+      "alpha-m4@r1",
+      "alpha-m5@r1"
+    ],
+    "outside_dataset": [],
+    "unresolved": [],
+    "present": {
+      "alpha-m2@r2": true
+    },
+    "absent": {},
+    "passed": true
+  },
+  "graph_probe": {
+    "ok": false,
+    "elapsed_ms": 334.6,
+    "error": "LLMAPIKeyNotSetError: LLMAPIKeyNotSetError: LLM API key is not set. (Status code: 422) Fix: Set LLM_API_KEY in your .env (copy .env.template to start). Cognee defaults to the OpenAI provider; set LLM_PROVIDER and LLM_MODEL as well to use another provider, and configure EMBEDDING_* too or embeddings fall back to OpenAI."
+  },
+  "lifecycle": {
+    "dataset": "af024-lifecycle",
+    "add_twice_seconds": 2.83,
+    "stored_data_count_after_reload": 1,
+    "cognify_seconds": 11.94,
+    "initial_elapsed_ms": 279.0,
+    "initial_rows": [
+      {
+        "result_id": "e8ffb2ef-0f27-5594-93c4-cff2ebff8fb8",
+        "source_chunk_id": null,
+        "message_id": "life-m1",
+        "revision": 1,
+        "project_id": "lifecycle",
+        "author_id": "emp-lifecycle-alex",
+        "sent_at": "2026-09-14T10:00:00Z",
+        "attribution_source": "external_metadata",
+        "consistent": true,
+        "text": "[actionflow] project=lifecycle chat_id=chat-lifecycle message_id=life-m1 revision=1 author_id=emp-lifecycle-alex author=Alex side=employee sent_at=2026-09-14T10:00:00Z available_at=2026-09-14T10:00:30Z edited_at=- deleted_at=- reply_to_message_id=-\nI will send the estimate by Friday."
+      }
+    ],
+    "update_seconds": 9.01,
+    "update_result": {
+      "status": "incremental",
+      "regions": 1,
+      "deleted_chunks": 1,
+      "added_chunks": 1,
+      "reused_chunks": 0,
+      "redated_chunks": 0,
+      "kept_chunks": 0,
+      "reindexed_chunks": 0,
+      "total_chunks": 1,
+      "data_id": "40384d4c-85c0-599d-a65d-dcde2970fed3",
+      "dataset_id": "89554ccb-5ea8-5c22-bd82-988955adf8b6",
+      "duration_seconds": 9.005,
+      "pipeline_run_id": "08e68644-cf02-4e64-a6bd-795497dc84de",
+      "fallback": null,
+      "error": null,
+      "after_run_error": null
+    },
+    "updated_elapsed_ms": 474.7,
+    "updated_rows": [
+      {
+        "result_id": "44fe7f72-f347-598f-9b48-9d38f67c5a81",
+        "source_chunk_id": null,
+        "message_id": "life-m1",
+        "revision": 1,
+        "project_id": "lifecycle",
+        "author_id": "emp-lifecycle-alex",
+        "sent_at": "2026-09-14T10:00:00Z",
+        "attribution_source": "external_metadata",
+        "consistent": false,
+        "text": "[actionflow] project=lifecycle chat_id=chat-lifecycle message_id=life-m1 revision=2 author_id=emp-lifecycle-alex author=Alex side=employee sent_at=2026-09-14T10:00:00Z available_at=2026-09-14T10:10:30Z edited_at=2026-09-14T10:10:00Z deleted_at=- reply_to_message_id=-\nI will send the estimate by Monday."
+      }
+    ],
+    "remove_mode": "forget",
+    "remove_seconds": 3.11,
+    "remove_result": {
+      "status": "success",
+      "dataset_id": "89554ccb-5ea8-5c22-bd82-988955adf8b6",
+      "data_id": "40384d4c-85c0-599d-a65d-dcde2970fed3",
+      "data_record_found": true,
+      "deleted_nodes": 17,
+      "deleted_edges": 19,
+      "data_remaining": false,
+      "dataset_deleted": false,
+      "search_history_removed": false,
+      "history_cleaned": false
+    },
+    "deleted_elapsed_ms": 375.4,
+    "deleted_rows": [],
+    "restore_seconds": 10.99,
+    "restored_elapsed_ms": 304.6,
+    "restored_rows": [
+      {
+        "result_id": "eae61163-20b8-5a40-9325-4b8b7e19c4ad",
+        "source_chunk_id": null,
+        "message_id": "life-m1",
+        "revision": 2,
+        "project_id": "lifecycle",
+        "author_id": "emp-lifecycle-alex",
+        "sent_at": "2026-09-14T10:00:00Z",
+        "attribution_source": "external_metadata",
+        "consistent": true,
+        "text": "[actionflow] project=lifecycle chat_id=chat-lifecycle message_id=life-m1 revision=2 author_id=emp-lifecycle-alex author=Alex side=employee sent_at=2026-09-14T10:00:00Z available_at=2026-09-14T10:10:30Z edited_at=2026-09-14T10:10:00Z deleted_at=- reply_to_message_id=-\nI will send the estimate by Monday."
+      }
+    ],
+    "checks": {
+      "reload_deduplicated": true,
+      "update_visible": true,
+      "delete_removed": true,
+      "restore_visible": true,
+      "update_metadata_preserved": true,
+      "update_metadata_consistent": false
+    }
+  },
+  "parallel": {
+    "elapsed_ms": 413.6,
+    "errors": [],
+    "result_counts": [
+      5,
+      4
+    ],
+    "passed": true
+  },
+  "checks": {
+    "source_unchanged": true,
+    "direct_provenance": true,
+    "summary_mapping": true,
+    "historical_snapshot": true,
+    "native_date_leak": true,
+    "isolation": true,
+    "lifecycle_reload": true,
+    "lifecycle_update": true,
+    "lifecycle_delete": true,
+    "lifecycle_restore": true,
+    "lifecycle_update_metadata_consistent": false,
+    "summary_direct_metadata": false,
+    "parallel_search": true
+  },
+  "attribution": {
+    "chunk_rows": 42,
+    "chunk_unresolved": 0,
+    "chunk_inconsistent": 0,
+    "outside_dataset": 0,
+    "summary_unresolved": 0,
+    "summary_outside_dataset": 0
+  },
+  "defects": {
+    "native_as_of_filter_absent": {
+      "evidence": "final_alpha_query_with_date_still_sees_later_facts",
+      "later_facts_returned": {
+        "alpha-m3": true,
+        "alpha-m4": true,
+        "alpha-m5": true
+      },
+      "mitigation": "materialize a separate dataset per project and as_of"
+    },
+    "update_keeps_stale_external_metadata": {
+      "evidence": "lifecycle.updated_rows",
+      "consistent": false,
+      "mitigation": "rebuild the projection item instead of using cognee.update"
+    },
+    "dataset_scope_requires_access_control": {
+      "evidence": "local single-user mode (ENABLE_BACKEND_ACCESS_CONTROL=false) ignored datasets=[...] and returned every project's chunks; the run therefore uses the default access-control mode and the default user",
+      "mitigation": "keep access control enabled and select the named dataset"
+    },
+    "summary_loses_direct_provenance": {
+      "evidence": "summary.rows",
+      "direct_metadata": false,
+      "mitigation": "join source_chunk_id to a preceding CHUNKS result"
+    },
+    "graph_completion_requires_llm": {
+      "ok": false,
+      "elapsed_ms": 334.6,
+      "error": "LLMAPIKeyNotSetError: LLMAPIKeyNotSetError: LLM API key is not set. (Status code: 422) Fix: Set LLM_API_KEY in your .env (copy .env.template to start). Cognee defaults to the OpenAI provider; set LLM_PROVIDER and LLM_MODEL as well to use another provider, and configure EMBEDDING_* too or embeddings fall back to OpenAI."
+    },
+    "no_native_freshness_or_incremental_contract": {
+      "evidence": "manifest + lifecycle timings",
+      "mitigation": "compare source_sha256/source_max_available_at and rebuild"
+    }
+  },
+  "decision": {
+    "status": "requires_fixes",
+    "projection_status": "checks_passed_for_per_project_as_of_chunks",
+    "reason": "The projection passed isolation, source attribution, historical-snapshot, delete and restore checks. Native Cognee still cannot be used as the context source without fixes: a date in a query returns later facts, update leaves external_metadata at the old revision, summaries need a source_chunk_id join, graph completion needs an LLM key, and dataset scoping depends on access control. A future A/B may use the per-project/per-as_of chunk projection only after these defects are explicitly handled; native graph memory is not ready."
+  }
+}
