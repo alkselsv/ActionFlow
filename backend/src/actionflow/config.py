@@ -42,6 +42,17 @@ def _int(name: str, default: int) -> int:
     return int(value) if value else default
 
 
+def _bool(name: str, default: bool = False) -> bool:
+    value = os.getenv(name, "").strip().lower()
+    if not value:
+        return default
+    if value in {"1", "true", "yes", "on"}:
+        return True
+    if value in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"{name} must be a boolean")
+
+
 def _database_url() -> str:
     explicit = _optional("ACTIONFLOW_DATABASE_URL") or _optional("DATABASE_URL")
     if explicit:
@@ -83,6 +94,8 @@ class Settings:
     embedding_timeout_seconds: float = 60.0
     telegram_bot_token: str | None = field(default=None, repr=False)
     telegram_poll_timeout_seconds: float = 30.0
+    telegram_auto_analysis_enabled: bool = False
+    telegram_analysis_debounce_seconds: int = 10
 
     @classmethod
     def from_env(cls):
@@ -122,6 +135,16 @@ class Settings:
             or openai_base_url,
             embedding_timeout_seconds=_float(
                 "ACTIONFLOW_EMBEDDING_TIMEOUT_SECONDS", 60.0
+            ),
+            telegram_bot_token=_optional("TELEGRAM_BOT_TOKEN"),
+            telegram_poll_timeout_seconds=_float(
+                "ACTIONFLOW_TELEGRAM_POLL_TIMEOUT_SECONDS", 30.0
+            ),
+            telegram_auto_analysis_enabled=_bool(
+                "ACTIONFLOW_TELEGRAM_AUTO_ANALYSIS_ENABLED", False
+            ),
+            telegram_analysis_debounce_seconds=_int(
+                "ACTIONFLOW_TELEGRAM_ANALYSIS_DEBOUNCE_SECONDS", 10
             ),
         )
 

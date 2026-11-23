@@ -30,6 +30,8 @@ def poll_once(
     bot_id: str,
     username: str | None = None,
     timeout: float = 30,
+    auto_analysis_enabled: bool = False,
+    analysis_debounce_seconds: int = 10,
 ):
     with sessions() as db:
         state = db.get(TelegramBotState, bot_id)
@@ -56,6 +58,8 @@ def poll_once(
             bot_id=bot_id,
             username=username,
             now=now,
+            auto_analysis_enabled=auto_analysis_enabled,
+            analysis_debounce_seconds=analysis_debounce_seconds,
         )
         state = db.get(TelegramBotState, bot_id)
         state.last_polled_at = now
@@ -92,6 +96,8 @@ def run_polling(
     once=False,
     sleep=time.sleep,
     verify_identity=False,
+    auto_analysis_enabled=False,
+    analysis_debounce_seconds=10,
 ):
     check_cooldown = True
     attempt = 0
@@ -113,7 +119,13 @@ def run_polling(
                 username = bot.get("username")
                 verify_identity = False
             report = poll_once(
-                sessions, client, bot_id=bot_id, username=username, timeout=timeout
+                sessions,
+                client,
+                bot_id=bot_id,
+                username=username,
+                timeout=timeout,
+                auto_analysis_enabled=auto_analysis_enabled,
+                analysis_debounce_seconds=analysis_debounce_seconds,
             )
         except (TelegramApiError, OperationalError) as error:
             attempt += 1
@@ -191,6 +203,8 @@ def main(argv=None):
             verify_identity=True,
             timeout=timeout,
             once=args.once,
+            auto_analysis_enabled=settings.telegram_auto_analysis_enabled,
+            analysis_debounce_seconds=settings.telegram_analysis_debounce_seconds,
         )
     except KeyboardInterrupt:
         return 0

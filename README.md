@@ -42,7 +42,7 @@ npm.cmd --prefix frontend run dev
 uv run --project backend --frozen python -m actionflow.telegram_connector
 ```
 
-Он использует `getUpdates` long polling, не отправляет сообщения и подтверждает update только после сохранения. После получения событий нажмите «Обновить переписку». Ограничения, отказы и проверки описаны в [AF-027](docs/experiment/af-027-telegram-ingest.md). Реальный клиентский поток этим не включается.
+Он использует `getUpdates` long polling, не отправляет сообщения и подтверждает update только после сохранения. По умолчанию автоматический анализ Telegram-событий выключен. Для разрешённого тестового чата задайте в локальном `.env` `ACTIONFLOW_TELEGRAM_AUTO_ANALYSIS_ENABLED=true`; новые и изменённые сообщения запускают анализ через outbox → dispatcher → Temporal. Близкие события объединяются в течение `ACTIONFLOW_TELEGRAM_ANALYSIS_DEBOUNCE_SECONDS` (по умолчанию 10 секунд), а запуски одного проекта выполняются по очереди. После получения событий нажмите «Обновить переписку». Ограничения и проверки описаны в [AF-027](docs/experiment/af-027-telegram-ingest.md) и [AF-028](docs/experiment/af-028-event-driven-analysis.md). Реальный клиентский поток этим не включается.
 
 ### Запуск анализа
 

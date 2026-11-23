@@ -1,4 +1,6 @@
+import asyncio
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 
 import pytest
 from alembic import command
@@ -8,14 +10,25 @@ from sqlalchemy import select
 
 import actionflow.telegram_ingest as ingest_module
 from actionflow.api.app import create_app
+from actionflow.application.analysis_input import prepare_input
 from actionflow.config import Settings
-from actionflow.persistence.database import database
-from actionflow.persistence.project_settings import Message
-from actionflow.persistence.telegram import TelegramBotState
+from actionflow.dispatcher import dispatch_once
+from actionflow.persistence.analysis import (
+    AnalysisInputMessage,
+    AnalysisRun,
+    OutboxEvent,
+)
+from actionflow.persistence.database import as_utc, database
+from actionflow.persistence.project_settings import Chat, Message, MessageRevision
+from actionflow.persistence.telegram import (
+    TelegramBotState,
+    TelegramConnection,
+)
 from actionflow.setup_manager import create_manager
 from actionflow.telegram_client import TelegramApiError
 from actionflow.telegram_connector import poll_once, run_polling
 from actionflow.telegram_ingest import ingest_updates
+from actionflow.telegram_recovery import open_gap
 
 ORIGIN = {"Origin": "http://127.0.0.1:5173"}
 PASSWORD = "synthetic-telegram-password"
@@ -578,6 +591,219 @@ def test_same_second_edits_remain_ordered_despite_late_delivery(tmp_path, monkey
             f"/api/v1/projects/{project}/messages/{current['id']}/revisions"
         ).json()["items"]
         assert {revision["text"] for revision in revisions} == {"Earlier", "Latest"}
+
+
+def test_changed_telegram_events_coalesce_into_one_pending_analysis(tmp_path, monkeypatch):
+    settings, sessions = make_app(tmp_path, monkeypatch)
+    with TestClient(create_app(settings)) as browser:
+        login(browser)
+        project = create_project(browser, "Event-driven analysis")
+        connect(browser, project)
+        now = datetime.now(UTC)
+        initial = update(
+            50,
+            message(CHAT_A, 1, "Новый запрос", date=int(now.timestamp())),
+        )
+        with sessions.begin() as db:
+            report = ingest_updates(
+                db,
+                [initial],
+                bot_id="event-analysis-bot",
+                now=now,
+                auto_analysis_enabled=True,
+                analysis_debounce_seconds=10,
+            )
+        assert report.analysis_runs_created == 1
+
+        with sessions() as db:
+            [first_run] = list(db.scalars(select(AnalysisRun)))
+            [outbox] = list(db.scalars(select(OutboxEvent)))
+            first_run_id = first_run.id
+            assert outbox.aggregate_id == first_run.id
+            assert as_utc(outbox.next_attempt_at) >= now + timedelta(seconds=10)
+
+        edited_at = now + timedelta(seconds=5)
+        edited = update(
+            51,
+            {
+                **message(CHAT_A, 1, "Новый запрос, уточнение", date=int(now.timestamp())),
+                "edit_date": int(edited_at.timestamp()),
+            },
+            kind="edited_message",
+        )
+        with sessions.begin() as db:
+            report = ingest_updates(
+                db,
+                [edited],
+                bot_id="event-analysis-bot",
+                now=edited_at,
+                auto_analysis_enabled=True,
+                analysis_debounce_seconds=10,
+            )
+        assert report.analysis_runs_merged == 1
+
+        with sessions() as db:
+            runs = list(db.scalars(select(AnalysisRun)))
+            events = list(db.scalars(select(OutboxEvent)))
+            assert len(runs) == len(events) == 1
+            assert runs[0].id == first_run_id
+            assert as_utc(runs[0].as_of) == edited_at + timedelta(microseconds=1)
+            assert as_utc(runs[0].input_received_at) == edited_at
+            assert as_utc(events[0].next_attempt_at) >= edited_at + timedelta(seconds=10)
+
+        with sessions.begin() as db:
+            replay = ingest_updates(
+                db,
+                [edited],
+                bot_id="event-analysis-bot",
+                now=edited_at + timedelta(seconds=6),
+                auto_analysis_enabled=True,
+                analysis_debounce_seconds=10,
+            )
+            assert replay.analysis_runs_created == replay.analysis_runs_merged == 0
+
+        prepare_input(sessions, first_run_id, finalize=False)
+        with sessions() as db:
+            [input_message] = list(
+                db.scalars(
+                    select(AnalysisInputMessage).where(
+                        AnalysisInputMessage.run_id == first_run_id
+                    )
+                )
+            )
+            revision = db.get(MessageRevision, input_message.revision_id)
+            assert revision.snapshot["text"] == "Новый запрос, уточнение"
+
+
+def test_event_analysis_is_disabled_by_default(tmp_path, monkeypatch):
+    settings, sessions = make_app(tmp_path, monkeypatch)
+    with TestClient(create_app(settings)) as browser:
+        login(browser)
+        project = create_project(browser, "Event analysis disabled")
+        connect(browser, project)
+        now = datetime.now(UTC)
+        with sessions.begin() as db:
+            report = ingest_updates(
+                db,
+                [update(55, message(CHAT_A, 1, "Проверочное сообщение", date=int(now.timestamp())))],
+                bot_id="disabled-analysis-bot",
+                now=now,
+            )
+        assert report.analysis_runs_created == 0
+        with sessions() as db:
+            assert list(db.scalars(select(AnalysisRun))) == []
+
+
+def test_event_analysis_carries_known_telegram_gaps_into_limitations(tmp_path, monkeypatch):
+    settings, sessions = make_app(tmp_path, monkeypatch)
+    with TestClient(create_app(settings)) as browser:
+        login(browser)
+        project = create_project(browser, "Analysis with known gap")
+        connect(browser, project)
+        now = datetime.now(UTC)
+        with sessions.begin() as db:
+            chat = db.scalar(select(Chat).where(Chat.project_id == project))
+            connection = db.get(TelegramConnection, chat.id)
+            open_gap(db, connection, "retention_expired", now - timedelta(seconds=30), now)
+            ingest_updates(
+                db,
+                [update(56, message(CHAT_A, 1, "Новое сообщение", date=int(now.timestamp())))],
+                bot_id="gap-analysis-bot",
+                now=now,
+                auto_analysis_enabled=True,
+                analysis_debounce_seconds=0,
+            )
+            run = db.scalar(select(AnalysisRun))
+            run_id = run.id
+
+        prepare_input(sessions, run_id, finalize=False)
+        with sessions() as db:
+            run = db.get(AnalysisRun, run_id)
+            assert run.limitations["telegram_connection_status"] == "active"
+            [gap] = run.limitations["telegram_gaps"]
+            assert gap["reason"] == "retention_expired"
+            assert datetime.fromisoformat(gap["start_at"]) <= datetime.fromisoformat(
+                gap["end_at"]
+            )
+
+
+def test_dispatcher_serializes_automatic_runs_per_project(tmp_path, monkeypatch):
+    settings, sessions = make_app(tmp_path, monkeypatch)
+    with TestClient(create_app(settings)) as browser:
+        login(browser)
+        project = create_project(browser, "Serialized events")
+        connect(browser, project)
+        now = datetime.now(UTC)
+        with sessions.begin() as db:
+            ingest_updates(
+                db,
+                [update(60, message(CHAT_A, 1, "Первое", date=int(now.timestamp())))],
+                bot_id="serialized-bot",
+                now=now,
+                auto_analysis_enabled=True,
+                analysis_debounce_seconds=0,
+            )
+            [first_event] = list(db.scalars(select(OutboxEvent)))
+            first_event.next_attempt_at = now - timedelta(seconds=1)
+
+        class FakeTemporal:
+            def __init__(self):
+                self.started = []
+
+            async def start_workflow(self, _workflow, run_id, **_kwargs):
+                self.started.append(run_id)
+                return SimpleNamespace(first_execution_run_id=f"temporal-{run_id}")
+
+        temporal = FakeTemporal()
+
+        async def connect_temporal():
+            return temporal
+
+        assert asyncio.run(
+            dispatch_once(sessions, connect_temporal, "test-queue")
+        )
+        assert len(temporal.started) == 1
+
+        later = now + timedelta(seconds=1)
+        with sessions.begin() as db:
+            ingest_updates(
+                db,
+                [
+                    update(
+                        61,
+                        {
+                            **message(CHAT_A, 1, "Поздняя редакция", date=int(now.timestamp())),
+                            "edit_date": int(later.timestamp()),
+                        },
+                        kind="edited_message",
+                    )
+                ],
+                bot_id="serialized-bot",
+                now=later,
+                auto_analysis_enabled=True,
+                analysis_debounce_seconds=0,
+            )
+            first_run = db.scalar(
+                select(AnalysisRun).where(AnalysisRun.status == "queued")
+            )
+            first_run_id = first_run.id
+            assert len(list(db.scalars(select(AnalysisRun)))) == 2
+            [second_event] = list(
+                db.scalars(select(OutboxEvent).where(OutboxEvent.status == "pending"))
+            )
+            second_event.next_attempt_at = later - timedelta(seconds=1)
+
+        assert not asyncio.run(
+            dispatch_once(sessions, connect_temporal, "test-queue")
+        )
+        assert len(temporal.started) == 1
+        with sessions.begin() as db:
+            first_run = db.get(AnalysisRun, first_run_id)
+            first_run.status = "succeeded"
+        assert asyncio.run(
+            dispatch_once(sessions, connect_temporal, "test-queue")
+        )
+        assert len(temporal.started) == 2
 
 
 class FakeClient:

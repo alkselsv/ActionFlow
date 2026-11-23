@@ -12,6 +12,7 @@ from actionflow.persistence.project_settings import (
     SettingsVersion,
     SourceObservation,
 )
+from actionflow.persistence.telegram import TelegramConnection, TelegramGap
 
 MAX_MESSAGES = 50_000
 TERMINAL = {"succeeded", "failed"}
@@ -28,12 +29,16 @@ def sent_before_end(run):
     )
 
 
+def input_received_through(run):
+    return run.input_received_at or run.created_at
+
+
 def input_rows(run):
     source_observed = (
         select(func.min(SourceObservation.source_observed_at))
         .where(
             SourceObservation.revision_id == MessageRevision.id,
-            SourceObservation.recorded_at <= run.created_at,
+            SourceObservation.recorded_at <= input_received_through(run),
         )
         .correlate(MessageRevision)
         .scalar_subquery()
@@ -65,7 +70,7 @@ def input_rows(run):
         .join(MessageRevision, MessageRevision.message_id == Message.id)
         .where(
             *sent_before_end(run),
-            MessageRevision.observed_at <= run.created_at,
+            MessageRevision.observed_at <= input_received_through(run),
             available <= run.as_of,
             (
                 MessageRevision.edited_at.is_(None)
@@ -221,7 +226,7 @@ def prepare_input(sessions, run_id, deadline=None, *, finalize=True):
                     select(MessageRevision.id)
                     .where(
                         MessageRevision.message_id == Message.id,
-                        MessageRevision.observed_at <= run.created_at,
+                        MessageRevision.observed_at <= input_received_through(run),
                     )
                     .exists(),
                 )
@@ -236,20 +241,37 @@ def prepare_input(sessions, run_id, deadline=None, *, finalize=True):
                 .join(Message, Message.id == MessageRevision.message_id)
                 .where(
                     *sent_before_end(run),
-                    MessageRevision.observed_at <= min(run.created_at, run.as_of),
+                    MessageRevision.observed_at
+                    <= min(input_received_through(run), run.as_of),
                     MessageRevision.ordering_uncertain.is_(True),
                 )
             )
             if run.chat_id
             else 0
         )
-        run.limitations = {
+        limitations = {
             **counters,
             "missing_settings": settings is None,
             "unavailable_messages": max(0, total - counters["message_count"]),
             "history_incomplete": True,
             "uncertain_revisions": uncertain,
         }
+        connection = db.get(TelegramConnection, run.chat_id) if run.chat_id else None
+        if connection is not None:
+            limitations["telegram_connection_status"] = connection.status
+            limitations["telegram_gaps"] = [
+                {
+                    "reason": gap.reason,
+                    "start_at": as_utc(gap.start_at).isoformat(),
+                    "end_at": as_utc(gap.end_at).isoformat() if gap.end_at else None,
+                }
+                for gap in db.scalars(
+                    select(TelegramGap)
+                    .where(TelegramGap.chat_id == connection.chat_id)
+                    .order_by(TelegramGap.start_at, TelegramGap.id)
+                )
+            ]
+        run.limitations = limitations
         if deadline is not None and utc_now() >= deadline:
             raise TimeoutError("Activity deadline elapsed before saving the input")
         run.stage = "input_ready"
