@@ -14,6 +14,7 @@ from actionflow.persistence.project_settings import (
     Participant,
     SourceObservation,
 )
+from actionflow.persistence.telegram import TelegramConnection
 
 MAX_BYTES = 50 * 1024 * 1024
 MEDIA_FIELDS = (
@@ -166,6 +167,14 @@ def add_observation(db, message, versions, snapshot, edited, source_observed, no
     source_revision = snapshot.get("source_revision")
     active_source_revision = active.snapshot.get("source_revision") if active else None
     comparable = source_revision is not None and active_source_revision is not None
+    source_update = snapshot.get("source_update_id")
+    active_source_update = active.snapshot.get("source_update_id") if active else None
+    ordered_bot_edits = (
+        edited is not None
+        and edited == previous_edit
+        and type(source_update) is int
+        and type(active_source_update) is int
+    )
     if (
         active
         and edited == previous_edit
@@ -188,9 +197,10 @@ def add_observation(db, message, versions, snapshot, edited, source_observed, no
     )
     if comparable:
         is_newer = source_revision > active_source_revision
+    elif ordered_bot_edits:
+        is_newer = source_update > active_source_update
     if not is_newer and any(
-        edited == as_utc(version.edited_at)
-        and same_content(snapshot, version.snapshot)
+        edited == as_utc(version.edited_at) and same_content(snapshot, version.snapshot)
         for version in versions
     ):
         return False, False, False
@@ -200,7 +210,9 @@ def add_observation(db, message, versions, snapshot, edited, source_observed, no
         and (
             source_revision == active_source_revision
             if comparable
-            else edited is None or previous_edit is None or edited == previous_edit
+            else edited is None
+            or previous_edit is None
+            or (edited == previous_edit and not ordered_bot_edits)
         )
     )
     revision = MessageRevision(
@@ -413,5 +425,8 @@ def import_chat(db, project, payload, key=None):
             receipt = ImportReceipt(project_id=project.id, key=key)
             db.add(receipt)
         receipt.payload_hash, receipt.report, receipt.created_at = digest, report, now
+    connection = db.get(TelegramConnection, chat.id)
+    if connection is not None:
+        connection.last_reconciled_at = now
     db.commit()
     return report, False

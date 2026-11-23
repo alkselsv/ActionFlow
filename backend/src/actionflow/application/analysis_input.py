@@ -54,6 +54,9 @@ def input_rows(run):
                         MessageRevision.snapshot["source_revision"].as_integer(), 0
                     ).desc(),
                     func.coalesce(MessageRevision.edited_at, Message.sent_at).desc(),
+                    func.coalesce(
+                        MessageRevision.snapshot["source_update_id"].as_integer(), 0
+                    ).desc(),
                     MessageRevision.revision_no.desc(),
                 ),
             )

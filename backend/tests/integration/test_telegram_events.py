@@ -1,3 +1,5 @@
+from datetime import UTC, datetime, timedelta
+
 import pytest
 from alembic import command
 from alembic.config import Config
@@ -11,7 +13,8 @@ from actionflow.persistence.database import database
 from actionflow.persistence.project_settings import Message
 from actionflow.persistence.telegram import TelegramBotState
 from actionflow.setup_manager import create_manager
-from actionflow.telegram_connector import poll_once
+from actionflow.telegram_client import TelegramApiError
+from actionflow.telegram_connector import poll_once, run_polling
 from actionflow.telegram_ingest import ingest_updates
 
 ORIGIN = {"Origin": "http://127.0.0.1:5173"}
@@ -23,9 +26,7 @@ CHAT_B = "-1002222222222"
 def make_app(tmp_path, monkeypatch):
     settings = Settings(database_url=f"sqlite:///{tmp_path / 'telegram.db'}")
     monkeypatch.setenv("ACTIONFLOW_DATABASE_URL", settings.database_url)
-    migration = Config(
-        __file__.rsplit("backend", 1)[0] + "backend/alembic.ini"
-    )
+    migration = Config(__file__.rsplit("backend", 1)[0] + "backend/alembic.ini")
     command.upgrade(migration, "head")
     _, sessions = database(settings.database_url)
     create_manager(sessions, "manager", PASSWORD)
@@ -82,9 +83,129 @@ def update(update_id, payload, kind="message"):
     return {"update_id": update_id, kind: payload}
 
 
-def test_manual_connection_and_ingestion_keep_project_boundaries(
+def test_recovery_retains_late_events_and_marks_expired_history(tmp_path, monkeypatch):
+    settings, sessions = make_app(tmp_path, monkeypatch)
+    clock = datetime.now(UTC) - timedelta(days=2)
+    monkeypatch.setattr("actionflow.telegram_connector.utc_now", lambda: clock)
+    monkeypatch.setattr("actionflow.api.telegram.utc_now", lambda: clock)
+    with TestClient(create_app(settings)) as browser:
+        login(browser)
+        project = create_project(browser, "Recovery")
+        connect(browser, project, CHAT_A)
+
+        event = update(40, message(CHAT_A, 1, "First"))
+        late = update(39, message(CHAT_A, 2, "Late delivery"))
+        reset = update(3, message(CHAT_A, 3, "After retention"))
+        backlog = [
+            reset,
+            *(update(i, message(CHAT_B, i, "Other chat")) for i in range(4, 103)),
+        ]
+        client = FakeClient([[event], [late, event], backlog, []])
+        poll_once(sessions, client, bot_id="test-bot")
+        clock += timedelta(minutes=30)
+        # A new polling call reads the committed cursor from the database.
+        report = poll_once(sessions, client, bot_id="test-bot")
+        assert report.last_update_id == 40
+        assert report.accepted == 1
+        assert (
+            browser.get(f"/api/v1/projects/{project}/telegram").json()["connection"][
+                "gaps"
+            ]
+            == []
+        )
+
+        clock += timedelta(hours=26)
+        connection = browser.get(f"/api/v1/projects/{project}/telegram").json()[
+            "connection"
+        ]
+        assert connection["polling_delayed"]
+        assert connection["gaps"][0]["reason"] == "retention_expired"
+        poll_once(sessions, client, bot_id="test-bot")
+        connection = browser.get(f"/api/v1/projects/{project}/telegram").json()[
+            "connection"
+        ]
+        assert not connection["polling_delayed"]
+        assert connection["queue_caught_up_at"] != connection["last_polled_at"]
+        assert connection["gaps"][0]["reason"] == "retention_expired"
+        poll_once(sessions, client, bot_id="test-bot")
+        assert client.offsets == [None, 41, None, 103]
+        connection = browser.get(f"/api/v1/projects/{project}/telegram").json()[
+            "connection"
+        ]
+        assert not connection["polling_delayed"]
+        assert connection["completeness"] == "unknown"
+        assert len(connection["gaps"]) == 1
+        assert connection["gaps"][0]["reason"] == "retention_expired"
+        messages = browser.get(f"/api/v1/projects/{project}/messages").json()["items"]
+        assert {item["text"] for item in messages} == {
+            "First",
+            "Late delivery",
+            "After retention",
+        }
+
+
+def test_retry_is_bounded_and_respects_telegram_rate_limit(tmp_path, monkeypatch):
+    settings, sessions = make_app(tmp_path, monkeypatch)
+    delays = []
+
+    class FailingClient:
+        def __init__(self, failures):
+            self.failures = iter(failures)
+
+        def get_updates(self, **kwargs):
+            raise next(self.failures)
+
+    temporary = TelegramApiError("Temporary")
+    limited = TelegramApiError("Limited", code="rate_limited", retry_after=25)
+    client = FailingClient([temporary, limited, temporary, temporary, temporary])
+    assert run_polling(sessions, client, bot_id="test-bot", sleep=delays.append) == 1
+    assert delays == [2, 25, 8, 16]
+    with sessions() as db:
+        state = db.get(TelegramBotState, "test-bot")
+        assert state.failures == 5
+        assert state.last_error == "temporary"
+        assert state.retry_at is None
+
+    permanent = TelegramApiError("Denied", code="access_denied")
+    assert (
+        run_polling(
+            sessions, FailingClient([permanent]), bot_id="test-bot", sleep=delays.append
+        )
+        == 1
+    )
+    with sessions() as db:
+        state = db.get(TelegramBotState, "test-bot")
+        assert state.failures == 1
+        assert state.last_error == "access_denied"
+    assert delays == [2, 25, 8, 16]
+    with TestClient(create_app(settings)) as browser:
+        login(browser)
+        project = create_project(browser, "Polling health")
+        status = connect(browser, project, CHAT_A)["connection"]
+        assert status["polling_error"] == "access_denied"
+        assert status["polling_failures"] == 1
+
+
+def test_startup_respects_persisted_retry_before_contacting_telegram(
     tmp_path, monkeypatch
 ):
+    _, sessions = make_app(tmp_path, monkeypatch)
+    with sessions.begin() as db:
+        db.add(
+            TelegramBotState(
+                bot_id="test-bot", retry_at=datetime.now(UTC) + timedelta(minutes=2)
+            )
+        )
+    # No Telegram methods may be called during the persisted pause.
+    assert (
+        run_polling(
+            sessions, object(), bot_id="test-bot", once=True, verify_identity=True
+        )
+        == 1
+    )
+
+
+def test_manual_connection_and_ingestion_keep_project_boundaries(tmp_path, monkeypatch):
     settings, sessions = make_app(tmp_path, monkeypatch)
     with TestClient(create_app(settings)) as browser:
         login(browser)
@@ -150,25 +271,29 @@ def test_manual_connection_and_ingestion_keep_project_boundaries(
         assert report.non_text == 1
         assert report.last_update_id == 6
 
-        first_messages = browser.get(
-            f"/api/v1/projects/{first}/messages"
-        ).json()["items"]
-        second_messages = browser.get(
-            f"/api/v1/projects/{second}/messages"
-        ).json()["items"]
+        first_messages = browser.get(f"/api/v1/projects/{first}/messages").json()[
+            "items"
+        ]
+        second_messages = browser.get(f"/api/v1/projects/{second}/messages").json()[
+            "items"
+        ]
         assert len(first_messages) == 3
         assert len(second_messages) == 1
         assert {item["external_id"] for item in first_messages} == {"1", "2", "3"}
         assert all(item["source"] == "telegram_bot" for item in first_messages)
-        assert next(item for item in first_messages if item["external_id"] == "2")[
-            "reply_to_external_id"
-        ] == "1"
+        assert (
+            next(item for item in first_messages if item["external_id"] == "2")[
+                "reply_to_external_id"
+            ]
+            == "1"
+        )
         sticker = next(item for item in first_messages if item["external_id"] == "3")
         assert sticker["attachments"]["media_type"] == "sticker"
         assert sticker["text"] == ""
-        assert next(item for item in first_messages if item["external_id"] == "1")[
-            "text"
-        ] == "Нужен счёт до пятницы"
+        assert (
+            next(item for item in first_messages if item["external_id"] == "1")["text"]
+            == "Нужен счёт до пятницы"
+        )
 
         revisions = browser.get(
             f"/api/v1/projects/{first}/messages/"
@@ -178,9 +303,9 @@ def test_manual_connection_and_ingestion_keep_project_boundaries(
         assert revisions[0]["text"] == "Нужен счёт"
         assert revisions[1]["text"] == "Нужен счёт до пятницы"
 
-        participants = browser.get(
-            f"/api/v1/projects/{first}/participants"
-        ).json()["items"]
+        participants = browser.get(f"/api/v1/projects/{first}/participants").json()[
+            "items"
+        ]
         assert {item["source_author_id"] for item in participants} == {"101", "102"}
         assert all(item["side"] == "unknown" for item in participants)
         saved = browser.post(
@@ -199,18 +324,19 @@ def test_manual_connection_and_ingestion_keep_project_boundaries(
                 "timezone": "Europe/Moscow",
                 "first_response_minutes": 60,
                 "calendar": {"closed_dates": []},
-                "participant_sides": [
-                    {"source_author_id": "101", "side": "customer"}
-                ],
+                "participant_sides": [{"source_author_id": "101", "side": "customer"}],
             },
         )
         assert saved.status_code == 201
-        participants = browser.get(
-            f"/api/v1/projects/{first}/participants"
-        ).json()["items"]
-        assert next(
-            item for item in participants if item["source_author_id"] == "101"
-        )["side"] == "customer"
+        participants = browser.get(f"/api/v1/projects/{first}/participants").json()[
+            "items"
+        ]
+        assert (
+            next(item for item in participants if item["source_author_id"] == "101")[
+                "side"
+            ]
+            == "customer"
+        )
 
         with sessions.begin() as db:
             repeated = ingest_updates(
@@ -219,20 +345,23 @@ def test_manual_connection_and_ingestion_keep_project_boundaries(
         assert repeated.accepted == 0
         assert repeated.rejected == 6
         assert repeated.rejected_reasons == {"duplicate_or_stale_update": 6}
-        assert len(
-            browser.get(f"/api/v1/projects/{first}/messages").json()["items"]
-        ) == 3
+        assert (
+            len(browser.get(f"/api/v1/projects/{first}/messages").json()["items"]) == 3
+        )
 
         with sessions.begin() as db:
             state = db.get(TelegramBotState, "test-bot")
             assert state.last_update_id == 6
             assert state.username == "synthetic_bot"
 
-        assert browser.post(
-            f"/api/v1/projects/{first}/telegram/disconnect",
-            headers=ORIGIN,
-            json={},
-        ).status_code == 200
+        assert (
+            browser.post(
+                f"/api/v1/projects/{first}/telegram/disconnect",
+                headers=ORIGIN,
+                json={},
+            ).status_code
+            == 200
+        )
         with sessions.begin() as db:
             inactive = ingest_updates(
                 db,
@@ -240,12 +369,15 @@ def test_manual_connection_and_ingestion_keep_project_boundaries(
                 bot_id="test-bot",
             )
         assert inactive.rejected_reasons == {"inactive_connection": 1}
-        assert len(
-            browser.get(f"/api/v1/projects/{first}/messages").json()["items"]
-        ) == 3
-        assert browser.get(f"/api/v1/projects/{first}/telegram").json()[
-            "connection"
-        ]["status"] == "disconnected"
+        assert (
+            len(browser.get(f"/api/v1/projects/{first}/messages").json()["items"]) == 3
+        )
+        assert (
+            browser.get(f"/api/v1/projects/{first}/telegram").json()["connection"][
+                "status"
+            ]
+            == "disconnected"
+        )
 
 
 def test_invalid_events_and_membership_are_visible_and_do_not_swap_chats(
@@ -287,6 +419,8 @@ def test_invalid_events_and_membership_are_visible_and_do_not_swap_chats(
         status = browser.get(f"/api/v1/projects/{project}/telegram").json()
         assert status["connection"]["status"] == "needs_check"
         assert status["connection"]["last_error"] == "bot_left"
+        assert status["connection"]["gaps"][0]["reason"] == "access_lost"
+        assert status["connection"]["gaps"][0]["end_at"] is None
 
         joined = {
             "update_id": 13,
@@ -300,11 +434,12 @@ def test_invalid_events_and_membership_are_visible_and_do_not_swap_chats(
         status = browser.get(f"/api/v1/projects/{project}/telegram").json()
         assert status["connection"]["status"] == "active"
         assert status["connection"]["last_error"] is None
+        assert status["connection"]["gaps"][0]["end_at"] is not None
         assert [
             item["text"]
-            for item in browser.get(
-                f"/api/v1/projects/{project}/messages"
-            ).json()["items"]
+            for item in browser.get(f"/api/v1/projects/{project}/messages").json()[
+                "items"
+            ]
         ] == ["Валидное сообщение"]
 
 
@@ -339,9 +474,10 @@ def test_partial_failure_does_not_advance_cursor(tmp_path, monkeypatch):
             report = ingest_updates(db, updates, bot_id="partial-bot")
         assert report.messages_created == 2
         assert report.last_update_id == 21
-        assert len(
-            browser.get(f"/api/v1/projects/{project}/messages").json()["items"]
-        ) == 2
+        assert (
+            len(browser.get(f"/api/v1/projects/{project}/messages").json()["items"])
+            == 2
+        )
 
 
 def test_import_and_bot_overlap_does_not_duplicate_or_destroy_revision(
@@ -406,10 +542,42 @@ def test_import_and_bot_overlap_does_not_duplicate_or_destroy_revision(
             content=__import__("json").dumps(export).encode(),
         )
         assert replay.status_code == 200
+        assert browser.get(f"/api/v1/projects/{project}/telegram").json()["connection"][
+            "last_reconciled_at"
+        ]
         assert replay.json()["imported"] == 0
-        assert len(
-            browser.get(f"/api/v1/projects/{project}/messages").json()["items"]
-        ) == 1
+        assert (
+            len(browser.get(f"/api/v1/projects/{project}/messages").json()["items"])
+            == 1
+        )
+
+
+def test_same_second_edits_remain_ordered_despite_late_delivery(tmp_path, monkeypatch):
+    settings, sessions = make_app(tmp_path, monkeypatch)
+    with TestClient(create_app(settings)) as browser:
+        login(browser)
+        project = create_project(browser, "Same-second edits")
+        connect(browser, project)
+        newer = update(
+            12,
+            {**message(CHAT_A, 1, "Latest"), "edit_date": 1_800_000_300},
+            "edited_message",
+        )
+        older = update(
+            11,
+            {**message(CHAT_A, 1, "Earlier"), "edit_date": 1_800_000_300},
+            "edited_message",
+        )
+        with sessions.begin() as db:
+            ingest_updates(db, [newer], bot_id="test-bot")
+        with sessions.begin() as db:
+            ingest_updates(db, [older], bot_id="test-bot")
+        [current] = browser.get(f"/api/v1/projects/{project}/messages").json()["items"]
+        assert current["text"] == "Latest"
+        revisions = browser.get(
+            f"/api/v1/projects/{project}/messages/{current['id']}/revisions"
+        ).json()["items"]
+        assert {revision["text"] for revision in revisions} == {"Earlier", "Latest"}
 
 
 class FakeClient:
@@ -430,9 +598,7 @@ def test_poll_once_uses_saved_cursor_and_acknowledges_after_commit(
         login(browser)
         project = create_project(browser, "Cursor")
         connect(browser, project)
-    client = FakeClient(
-        [[update(40, message(CHAT_A, 1, "After restart"))], []]
-    )
+    client = FakeClient([[update(40, message(CHAT_A, 1, "After restart"))], []])
     with sessions() as db:
         # The test uses a known bot identity; the real loop gets it from getMe.
         assert db.get(TelegramBotState, "cursor-bot") is None
