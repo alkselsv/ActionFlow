@@ -1,5 +1,5 @@
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import quote
 
@@ -81,6 +81,8 @@ class Settings:
     embedding_api_key: str | None = None
     embedding_base_url: str | None = None
     embedding_timeout_seconds: float = 60.0
+    telegram_bot_token: str | None = field(default=None, repr=False)
+    telegram_poll_timeout_seconds: float = 30.0
 
     @classmethod
     def from_env(cls):

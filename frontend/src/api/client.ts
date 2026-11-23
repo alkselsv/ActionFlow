@@ -14,6 +14,7 @@ export type MessageRevision = {
   revision_no: number;
   text: string;
   reply_to_external_id: string | null;
+  source: "telegram_import" | "telegram_bot";
   source_type: "message" | "service";
   service_action: string | null;
   actor_name: string | null;
@@ -29,6 +30,21 @@ export type ConversationMessage = MessageRevision & {
   external_id: string;
   sent_at: string;
   author: { id: string | null; name: string | null; side: Side | null };
+};
+
+export type TelegramConnection = {
+  chat_id: string;
+  name: string;
+  type: string;
+  status: "active" | "needs_check" | "disconnected";
+  connected_at: string;
+  last_event_at: string | null;
+  last_error: string | null;
+};
+
+export type TelegramStatus = {
+  connection: TelegramConnection | null;
+  bot_configured: boolean;
 };
 
 export type Side = "vedita" | "customer" | "unknown";

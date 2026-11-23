@@ -32,6 +32,7 @@ from actionflow.api.project_settings import (
     settings_result,
     settings_versions,
 )
+from actionflow.api.telegram import register_telegram_routes
 from actionflow.api.telegram_import import (
     MAX_BYTES,
     as_utc,
@@ -512,6 +513,9 @@ def create_app(settings: Settings) -> FastAPI:
     )
     register_finding_routes(
         projects, router, Db, SessionRequired, Depends(check_origin)
+    )
+    register_telegram_routes(
+        projects, Db, Depends(check_origin), settings
     )
     register_diagnostics_routes(router, Db, SessionRequired, settings)
     router.include_router(projects)
