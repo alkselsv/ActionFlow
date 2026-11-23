@@ -8,7 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from actionflow.application.proposals import ensure_proposal
-from actionflow.application.rules import RuleResult, evaluate_unanswered
+from actionflow.application.rules import RuleResult, evaluate_unanswered, settings_at
 from actionflow.application.run_results import record_detector_result
 from actionflow.detectors.contracts import (
     Detector,
@@ -366,7 +366,7 @@ def analyze_unanswered(
             if validation.status == "valid" and run.apply_to_queue:
                 rules = evaluate_unanswered(
                     run,
-                    settings,
+                    settings_at(db, run, settings, input_by_id[anchor_id].sent_at),
                     input_by_id[anchor_id],
                     candidate_model,
                     input_by_id,

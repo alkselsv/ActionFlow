@@ -186,7 +186,7 @@ def register_telegram_routes(projects, Db, origin, settings: Settings):
         dependencies=[origin],
     )
     def disconnect_telegram(project_id: str, db=Db):
-        require_project(db, project_id)
+        require_project(db, project_id, lock=True)
         chat = db.scalar(select(Chat).where(Chat.project_id == project_id))
         connection = db.get(TelegramConnection, chat.id) if chat else None
         if connection is None:

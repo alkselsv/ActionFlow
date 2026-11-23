@@ -11,6 +11,11 @@ from actionflow.config import Settings
 from actionflow.operations import record_worker_heartbeat
 from actionflow.persistence.database import database
 from actionflow.temporal.activities import AnalysisActivities
+from actionflow.temporal.deadlines import (
+    DeadlineActivities,
+    TelegramDeadlineWindow,
+    TelegramReconciliation,
+)
 from actionflow.temporal.workflow import AnalysisWorkflow
 
 logger = logging.getLogger(__name__)
@@ -27,10 +32,11 @@ async def heartbeat_loop(sessions, queue: str) -> None:
 
 def analysis_worker(client, sessions, queue, executor, detector=None):
     activities = AnalysisActivities(sessions, detector)
+    deadlines = DeadlineActivities(sessions)
     return Worker(
         client,
         task_queue=queue,
-        workflows=[AnalysisWorkflow],
+        workflows=[AnalysisWorkflow, TelegramDeadlineWindow, TelegramReconciliation],
         activities=[
             activities.prepare,
             activities.detect,
@@ -39,6 +45,8 @@ def analysis_worker(client, sessions, queue, executor, detector=None):
             activities.finalize,
             activities.fail,
             activities.fail_input,
+            deadlines.advance,
+            deadlines.reconcile,
         ],
         activity_executor=executor,
         max_concurrent_activities=4,

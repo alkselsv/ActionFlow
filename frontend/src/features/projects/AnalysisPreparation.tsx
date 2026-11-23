@@ -4,6 +4,7 @@ import { FindingDetails } from "../findings/FindingDetails";
 
 type DetectorStatus = "succeeded" | "failed" | "not_run" | "pending";
 type Run = {
+  trigger: "manual" | "telegram_event" | "telegram_schedule";
   run_id: string;
   status: "pending" | "queued" | "running" | "succeeded" | "failed";
   stage: string;
@@ -20,6 +21,8 @@ type Run = {
     message_count: number; attachments: number; system_events: number;
     unknown_authors: number; missing_settings: boolean; unavailable_messages: number;
     context_messages: number; uncertain_revisions: number;
+    telegram_connection_status?: string;
+    telegram_gaps?: unknown[];
     unanswered?: { candidate_count: number; valid_candidate_count: number; invalid_candidate_count: number; limitations: string[] };
   } | null;
   candidate_count: number | null;
@@ -43,7 +46,9 @@ type RunInput = Pick<Run, "period_start" | "period_end" | "as_of" | "apply_to_qu
 
 function runLabel(run: Run) {
   const date = (value: string) => new Date(value).toLocaleString();
-  return `${date(run.period_start)} — ${date(run.period_end)} · запуск ${date(run.created_at)} · ${run.run_id.slice(0, 8)}`;
+  const source = run.trigger === "telegram_schedule" ? "плановая сверка" :
+    run.trigger === "telegram_event" ? "событие Telegram" : "ручной запуск";
+  return `${date(run.period_start)} — ${date(run.period_end)} · ${source} ${date(run.created_at)} · ${run.run_id.slice(0, 8)}`;
 }
 type InputPage = {
   items: { message_id: string; revision_id: string; role: string; participant_side: string; revision: { text: string; revision_no: number } }[];
@@ -270,6 +275,7 @@ export function AnalysisPreparation({ projectId, onExpired, onCompleted }: {
       {run.error_code && <p role="alert">{errors[run.error_code] ?? "Не удалось выполнить анализ."}
         {run.retryable && " После проверки окружения можно создать новый запуск."}</p>}
       {run.limitations && <>
+        {run.trigger === "telegram_schedule" && <p>Сверка использует уже полученную переписку. Полноту истории Telegram подтвердить нельзя{run.limitations.telegram_gaps?.length ? ` · известных интервалов неполноты: ${run.limitations.telegram_gaps.length}` : ""}.</p>}
         <p>Сообщений: {run.limitations.message_count}, из них контекст: {run.limitations.context_messages}. Системных событий: {run.limitations.system_events}. С необработанными вложениями: {run.limitations.attachments}. С неизвестной стороной: {run.limitations.unknown_authors}.</p>
         <p>Без доступной редакции на момент оценки: {run.limitations.unavailable_messages}. Экспорт содержит только наблюдённые версии.</p>
         {run.limitations.uncertain_revisions > 0 && <p>Не включено редакций с неопределённым порядком: {run.limitations.uncertain_revisions}.</p>}

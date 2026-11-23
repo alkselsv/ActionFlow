@@ -274,6 +274,14 @@ export function FindingDetails({
       {item.commitment && <p>Обязательство: {item.commitment.status ? commitmentStatusLabels[item.commitment.status] ?? item.commitment.status : "неизвестно"} · срок {item.commitment.due_at ? new Date(item.commitment.due_at).toLocaleString() : "не указан"}.</p>}
     </li>)}</ol>
 
+    {card.deadline_checks?.length > 0 && <>
+      <h4>Проверки сроков</h4>
+      <ol>{card.deadline_checks.map((check) => <li key={check.id}>
+        {new Date(check.evaluated_at).toLocaleString()} · срок {new Date(check.due_at).toLocaleString()}
+        {" · "}{check.state === "overdue" ? "срок обязательства пропущен" : slaStateLabels[check.state] ?? check.state}
+        {" · "}версия условий {check.settings_version_id ?? "не зафиксирована"}
+      </li>)}</ol>
+    </>}
     {card.detector && <p>
       Модель: {card.detector.model_id ?? "не указана"} · prompt {card.detector.prompt_version ?? "—"} · схема {card.detector.schema_version ?? "—"} · длительность {card.detector.duration_ms ?? "—"} мс · стоимость {card.detector.cost_usd === null ? "неизвестна" : card.detector.cost_usd}.
     </p>}

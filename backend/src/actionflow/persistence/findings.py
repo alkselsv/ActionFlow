@@ -34,9 +34,7 @@ class Candidate(Base):
     subject_kind: Mapped[str] = mapped_column(String(20))
     subject_id: Mapped[str] = mapped_column(String(36))
     anchor_message_id: Mapped[str] = mapped_column(ForeignKey("message.id"))
-    anchor_revision_id: Mapped[str] = mapped_column(
-        ForeignKey("message_revision.id")
-    )
+    anchor_revision_id: Mapped[str] = mapped_column(ForeignKey("message_revision.id"))
     description: Mapped[str] = mapped_column(Text)
     confidence: Mapped[float] = mapped_column(Float)
     priority_hint: Mapped[str] = mapped_column(String(20), default="unknown")
@@ -80,9 +78,7 @@ class Commitment(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     project_id: Mapped[str] = mapped_column(ForeignKey("project.id"))
     anchor_message_id: Mapped[str] = mapped_column(ForeignKey("message.id"))
-    anchor_revision_id: Mapped[str] = mapped_column(
-        ForeignKey("message_revision.id")
-    )
+    anchor_revision_id: Mapped[str] = mapped_column(ForeignKey("message_revision.id"))
     subject_text: Mapped[str] = mapped_column(Text)
     assignee_name: Mapped[str | None] = mapped_column(String(200))
     assignee_participant_id: Mapped[str | None] = mapped_column(
@@ -91,6 +87,7 @@ class Commitment(Base):
     status: Mapped[str] = mapped_column(String(20), default="open")
     due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     due_uncertain: Mapped[bool] = mapped_column(Boolean, default=False)
+    due_settings_version_id: Mapped[str | None] = mapped_column(String(36))
     explicit_risk: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now
@@ -105,9 +102,7 @@ class CommitmentEvent(Base):
 
     __tablename__ = "commitment_event"
     __table_args__ = (
-        UniqueConstraint(
-            "commitment_id", "kind", "message_id", "revision_id"
-        ),
+        UniqueConstraint("commitment_id", "kind", "message_id", "revision_id"),
         Index("ix_commitment_event_commitment_at", "commitment_id", "at"),
     )
 
@@ -115,13 +110,9 @@ class CommitmentEvent(Base):
     commitment_id: Mapped[str] = mapped_column(ForeignKey("commitment.id"))
     kind: Mapped[str] = mapped_column(String(20))
     message_id: Mapped[str | None] = mapped_column(ForeignKey("message.id"))
-    revision_id: Mapped[str | None] = mapped_column(
-        ForeignKey("message_revision.id")
-    )
+    revision_id: Mapped[str | None] = mapped_column(ForeignKey("message_revision.id"))
     due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    previous_due_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True)
-    )
+    previous_due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     uncertain: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -134,9 +125,7 @@ class Finding(Base):
 
     __tablename__ = "finding"
     __table_args__ = (
-        UniqueConstraint(
-            "project_id", "finding_type", "subject_kind", "subject_id"
-        ),
+        UniqueConstraint("project_id", "finding_type", "subject_kind", "subject_id"),
         Index(
             "ix_finding_queue",
             "project_id",
@@ -159,9 +148,7 @@ class Finding(Base):
     subject_kind: Mapped[str] = mapped_column(String(20))
     subject_id: Mapped[str] = mapped_column(String(36))
     anchor_message_id: Mapped[str] = mapped_column(ForeignKey("message.id"))
-    anchor_revision_id: Mapped[str] = mapped_column(
-        ForeignKey("message_revision.id")
-    )
+    anchor_revision_id: Mapped[str] = mapped_column(ForeignKey("message_revision.id"))
     status: Mapped[str] = mapped_column(String(20), default="new")
     priority: Mapped[str] = mapped_column(String(20), default="unknown")
     priority_reason: Mapped[dict] = mapped_column(document, default=dict)
@@ -171,17 +158,11 @@ class Finding(Base):
     sla_due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     sla_state: Mapped[str] = mapped_column(String(30), default="not_calculated")
     sla_reason: Mapped[dict | None] = mapped_column(document)
-    first_response_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True)
-    )
-    commitment_due_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True)
-    )
+    first_response_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    commitment_due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     commitment_status: Mapped[str | None] = mapped_column(String(20))
     snooze_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    latest_candidate_id: Mapped[str | None] = mapped_column(
-        ForeignKey("candidate.id")
-    )
+    latest_candidate_id: Mapped[str | None] = mapped_column(ForeignKey("candidate.id"))
     current_run_id: Mapped[str | None] = mapped_column(ForeignKey("analysis_run.id"))
     version: Mapped[int] = mapped_column(default=1)
     created_at: Mapped[datetime] = mapped_column(
@@ -216,17 +197,29 @@ class FindingObservation(Base):
     sla_due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     sla_state: Mapped[str | None] = mapped_column(String(30))
     sla_reason: Mapped[dict | None] = mapped_column(document)
-    first_response_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True)
-    )
-    commitment_due_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True)
-    )
+    first_response_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    commitment_due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     commitment_status: Mapped[str | None] = mapped_column(String(20))
     settings_version_id: Mapped[str | None] = mapped_column(
         ForeignKey(
             "settings_version.id", name="fk_finding_observation_settings_version"
         )
+    )
+
+
+class DeadlineObservation(Base):
+    __tablename__ = "deadline_observation"
+    __table_args__ = (
+        Index("ix_deadline_observation_finding_at", "finding_id", "evaluated_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    finding_id: Mapped[str] = mapped_column(ForeignKey("finding.id"))
+    due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    evaluated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    state: Mapped[str] = mapped_column(String(30))
+    settings_version_id: Mapped[str | None] = mapped_column(
+        ForeignKey("settings_version.id")
     )
 
 
@@ -268,9 +261,7 @@ class ManagerAction(Base):
     to_status: Mapped[str] = mapped_column(String(20))
     comment: Mapped[str | None] = mapped_column(Text)
     snooze_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    proposal_id: Mapped[str | None] = mapped_column(
-        ForeignKey("finding_proposal.id")
-    )
+    proposal_id: Mapped[str | None] = mapped_column(ForeignKey("finding_proposal.id"))
     expected_version: Mapped[int]
     actor_user_id: Mapped[int] = mapped_column(ForeignKey("app_user.id"))
     idempotency_key: Mapped[str] = mapped_column(String(200))

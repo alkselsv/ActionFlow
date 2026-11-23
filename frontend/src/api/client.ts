@@ -146,6 +146,7 @@ export type FindingMessage = {
   reply_to_external_id: string | null;
 };
 export type FindingCard = FindingSummary & {
+  deadline_checks: { id: string; due_at: string; evaluated_at: string; state: string; settings_version_id: string | null }[];
   recommendation: string;
   priority_reason: Record<string, unknown>;
   subject: {

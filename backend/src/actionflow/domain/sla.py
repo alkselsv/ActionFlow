@@ -9,6 +9,7 @@ DATA_UNCERTAINTY = {
     "missing_text",
     "possible_attachment_answer",
     "unparsed_content",
+    "telegram_coverage_gap",
 }
 
 

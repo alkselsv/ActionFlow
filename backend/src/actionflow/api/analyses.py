@@ -50,6 +50,13 @@ def run_result(run):
     cost = run.cost_usd
     return {
         **start_result(run),
+        "trigger": "telegram_schedule"
+        if (run.idempotency_key or "").startswith("telegram-schedule:")
+        else (
+            "telegram_event"
+            if (run.idempotency_key or "").startswith("telegram-event:")
+            else "manual"
+        ),
         "status": run.status,
         "stage": run.stage,
         "project_id": run.project_id,

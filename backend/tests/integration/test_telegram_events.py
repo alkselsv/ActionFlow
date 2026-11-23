@@ -96,6 +96,268 @@ def update(update_id, payload, kind="message"):
     return {"update_id": update_id, kind: payload}
 
 
+@pytest.mark.parametrize("respond_at_deadline", [False, True])
+def test_timer_applies_current_state_once_after_worker_restart(
+    tmp_path, monkeypatch, respond_at_deadline
+):
+    import asyncio
+    import os
+    from concurrent.futures import ThreadPoolExecutor
+
+    from temporalio.testing import WorkflowEnvironment
+    from temporalio.worker import Worker
+
+    from actionflow.persistence.analysis import AnalysisRun
+    from actionflow.persistence.database import as_utc
+    from actionflow.persistence.findings import Commitment, DeadlineObservation, Finding
+    from actionflow.persistence.project_settings import (
+        MessageRevision,
+        ParticipantSide,
+        SettingsVersion,
+    )
+    from actionflow.temporal.deadlines import TelegramDeadlineWindow
+    from actionflow.worker import analysis_worker
+
+    if os.environ.get("ACTIONFLOW_TEST_TEMPORAL") != "1":
+        pytest.skip("Set ACTIONFLOW_TEST_TEMPORAL=1 to start the Temporal test server")
+    monkeypatch.setattr(
+        "actionflow.worker.Worker",
+        lambda *args, **kwargs: Worker(
+            *args,
+            **kwargs,
+            max_cached_workflows=0,
+        ),
+    )
+    settings, sessions = make_app(tmp_path, monkeypatch)
+
+    async def scenario():
+        async with await WorkflowEnvironment.start_time_skipping() as temporal:
+            at = await temporal.get_current_time()
+            due_at = at + timedelta(seconds=12)
+            with TestClient(create_app(settings)) as browser:
+                login(browser)
+                project = create_project(browser, "Deadline timer")
+                connect(browser, project, CHAT_A)
+                with sessions.begin() as db:
+                    ingest_updates(
+                        db,
+                        [
+                            update(
+                                40,
+                                message(
+                                    CHAT_A,
+                                    1,
+                                    "Когда будет готово?",
+                                    date=int(at.timestamp()) - 60,
+                                ),
+                            )
+                        ],
+                        bot_id="deadline-bot",
+                        now=at,
+                    )
+                    anchor = db.scalar(select(Message))
+                    revision = db.scalar(select(MessageRevision))
+                    version = SettingsVersion(
+                        project_id=project,
+                        version_no=1,
+                        context_text="",
+                        agreements="",
+                        manager_name="Manager",
+                        client_type="north",
+                        work_hours={
+                            "weekdays": [1, 2, 3, 4, 5],
+                            "start": "09:00",
+                            "end": "18:00",
+                        },
+                        calendar={"closed_dates": []},
+                        timezone="Europe/Moscow",
+                        first_response_minutes=60,
+                        created_at=at - timedelta(days=1),
+                        sides=[ParticipantSide(source_author_id="102", side="vedita")],
+                    )
+                    db.add(version)
+                    db.flush()
+                    run = AnalysisRun(
+                        project_id=project,
+                        chat_id=anchor.chat_id,
+                        period_start=at - timedelta(minutes=2),
+                        period_end=at,
+                        as_of=at,
+                        apply_to_queue=True,
+                        status="succeeded",
+                        request_hash="test",
+                        workflow_id="deadline-history",
+                        settings_version_id=version.id,
+                    )
+                    db.add(run)
+                    db.flush()
+                    finding = Finding(
+                        project_id=project,
+                        finding_type="unanswered",
+                        subject_kind="message",
+                        subject_id=anchor.id,
+                        anchor_message_id=anchor.id,
+                        anchor_revision_id=revision.id,
+                        description="Open question",
+                        status="confirmed",
+                        confidence=0.8,
+                        priority="medium",
+                        sla_due_at=due_at,
+                        sla_state="pending",
+                        current_run_id=run.id,
+                    )
+                    db.add(finding)
+                    db.flush()
+                    finding_id = finding.id
+                    promise = Commitment(
+                        project_id=project,
+                        anchor_message_id=anchor.id,
+                        anchor_revision_id=revision.id,
+                        subject_text="Promise",
+                        status="open",
+                        due_at=due_at,
+                    )
+                    db.add(promise)
+                    db.flush()
+                    commitment_card = Finding(
+                        project_id=project,
+                        finding_type="commitment",
+                        subject_kind="commitment",
+                        subject_id=promise.id,
+                        anchor_message_id=anchor.id,
+                        anchor_revision_id=revision.id,
+                        description="Promise",
+                        priority="low",
+                        confidence=0.8,
+                        commitment_due_at=due_at,
+                        commitment_status="open",
+                        current_run_id=run.id,
+                    )
+                    db.add(commitment_card)
+                    db.flush()
+                    commitment_id = commitment_card.id
+                    version_id = version.id
+                queue = "deadline-test"
+                with ThreadPoolExecutor(4) as executor:
+                    async with analysis_worker(
+                        temporal.client, sessions, queue, executor
+                    ):
+                        handle = await temporal.client.start_workflow(
+                            TelegramDeadlineWindow.run,
+                            30,
+                            id="deadline-one",
+                            task_queue=queue,
+                        )
+                        for _ in range(100):
+                            history = await handle.fetch_history()
+                            if any(
+                                event.HasField("timer_started_event_attributes")
+                                for event in history.events
+                            ):
+                                break
+                            await asyncio.sleep(0.05)
+                        else:
+                            pytest.fail("A durable Temporal timer was not scheduled")
+                    if respond_at_deadline:
+                        with sessions.begin() as db:
+                            ingest_updates(
+                                db,
+                                [
+                                    update(
+                                        41,
+                                        message(
+                                            CHAT_A,
+                                            2,
+                                            "Принял, вернусь с ответом.",
+                                            author=102,
+                                            reply=1,
+                                            date=int(due_at.timestamp()),
+                                        ),
+                                    )
+                                ],
+                                bot_id="deadline-bot",
+                                now=due_at,
+                            )
+                    async with analysis_worker(
+                        temporal.client, sessions, queue, executor
+                    ):
+                        await asyncio.wait_for(handle.result(), 25)
+                        await asyncio.wait_for(
+                            temporal.client.execute_workflow(
+                                TelegramDeadlineWindow.run,
+                                15,
+                                id="deadline-repeat",
+                                task_queue=queue,
+                            ),
+                            25,
+                        )
+                card = browser.get(f"/api/v1/findings/{finding_id}").json()
+                assert card["status"] == "confirmed"
+                assert card["sla"]["state"] == (
+                    "met" if respond_at_deadline else "breached"
+                )
+                assert card["priority"] == ("medium" if respond_at_deadline else "high")
+                assert card["sla"]["settings_version_id"] == version_id
+                assert card["sla"]["reason"]["trigger"] == "deadline_timer"
+                commitment = browser.get(f"/api/v1/findings/{commitment_id}").json()
+                assert commitment["priority"] == "high"
+                assert commitment["commitment"]["status"] == "open"
+                assert commitment["deadline_checks"][0]["state"] == "overdue"
+                with sessions() as db:
+                    [check] = db.scalars(
+                        select(DeadlineObservation).where(
+                            DeadlineObservation.finding_id == finding_id
+                        )
+                    )
+                    assert as_utc(check.evaluated_at) >= due_at
+                    assert as_utc(check.due_at) == due_at
+
+    asyncio.run(scenario())
+
+
+def test_scheduled_reconciliation_is_idempotent_and_skips_disconnected_chat(
+    tmp_path, monkeypatch
+):
+    from actionflow.application.deadlines import reconcile
+    from actionflow.persistence.analysis import AnalysisRun
+    from actionflow.persistence.telegram import TelegramConnection
+    from actionflow.telegram_schedules import DEADLINE_ID, RECONCILIATION_ID, schedules
+
+    settings, sessions = make_app(tmp_path, monkeypatch)
+    at = datetime.now(UTC)
+    with TestClient(create_app(settings)) as browser:
+        login(browser)
+        project = create_project(browser, "Scheduled reconciliation")
+        connect(browser, project, CHAT_A)
+        with sessions.begin() as db:
+            ingest_updates(
+                db,
+                [
+                    update(
+                        2,
+                        message(
+                            CHAT_A, 1, "Known history", date=int(at.timestamp()) - 60
+                        ),
+                    )
+                ],
+                bot_id="reconcile-test",
+                now=at,
+            )
+        assert reconcile(sessions, at, 12345) == 1
+        with sessions.begin() as db:
+            run = db.scalar(select(AnalysisRun))
+            run.status = "succeeded"
+            assert run.idempotency_key == "telegram-schedule:12345"
+        assert reconcile(sessions, at, 12345) == 0
+        with sessions.begin() as db:
+            db.scalar(select(TelegramConnection)).status = "disconnected"
+        assert reconcile(sessions, at, 12346) == 0
+    configured = schedules("test-queue", 60)
+    assert set(configured) == {DEADLINE_ID, RECONCILIATION_ID}
+    assert configured[RECONCILIATION_ID].spec.intervals[0].every == timedelta(hours=1)
+    assert configured[RECONCILIATION_ID].policy.overlap.name == "SKIP"
+
+
 def test_recovery_retains_late_events_and_marks_expired_history(tmp_path, monkeypatch):
     settings, sessions = make_app(tmp_path, monkeypatch)
     clock = datetime.now(UTC) - timedelta(days=2)
@@ -593,7 +855,9 @@ def test_same_second_edits_remain_ordered_despite_late_delivery(tmp_path, monkey
         assert {revision["text"] for revision in revisions} == {"Earlier", "Latest"}
 
 
-def test_changed_telegram_events_coalesce_into_one_pending_analysis(tmp_path, monkeypatch):
+def test_changed_telegram_events_coalesce_into_one_pending_analysis(
+    tmp_path, monkeypatch
+):
     settings, sessions = make_app(tmp_path, monkeypatch)
     with TestClient(create_app(settings)) as browser:
         login(browser)
@@ -626,7 +890,9 @@ def test_changed_telegram_events_coalesce_into_one_pending_analysis(tmp_path, mo
         edited = update(
             51,
             {
-                **message(CHAT_A, 1, "Новый запрос, уточнение", date=int(now.timestamp())),
+                **message(
+                    CHAT_A, 1, "Новый запрос, уточнение", date=int(now.timestamp())
+                ),
                 "edit_date": int(edited_at.timestamp()),
             },
             kind="edited_message",
@@ -649,7 +915,9 @@ def test_changed_telegram_events_coalesce_into_one_pending_analysis(tmp_path, mo
             assert runs[0].id == first_run_id
             assert as_utc(runs[0].as_of) == edited_at + timedelta(microseconds=1)
             assert as_utc(runs[0].input_received_at) == edited_at
-            assert as_utc(events[0].next_attempt_at) >= edited_at + timedelta(seconds=10)
+            assert as_utc(events[0].next_attempt_at) >= edited_at + timedelta(
+                seconds=10
+            )
 
         with sessions.begin() as db:
             replay = ingest_updates(
@@ -685,7 +953,17 @@ def test_event_analysis_is_disabled_by_default(tmp_path, monkeypatch):
         with sessions.begin() as db:
             report = ingest_updates(
                 db,
-                [update(55, message(CHAT_A, 1, "Проверочное сообщение", date=int(now.timestamp())))],
+                [
+                    update(
+                        55,
+                        message(
+                            CHAT_A,
+                            1,
+                            "Проверочное сообщение",
+                            date=int(now.timestamp()),
+                        ),
+                    )
+                ],
                 bot_id="disabled-analysis-bot",
                 now=now,
             )
@@ -694,7 +972,9 @@ def test_event_analysis_is_disabled_by_default(tmp_path, monkeypatch):
             assert list(db.scalars(select(AnalysisRun))) == []
 
 
-def test_event_analysis_carries_known_telegram_gaps_into_limitations(tmp_path, monkeypatch):
+def test_event_analysis_carries_known_telegram_gaps_into_limitations(
+    tmp_path, monkeypatch
+):
     settings, sessions = make_app(tmp_path, monkeypatch)
     with TestClient(create_app(settings)) as browser:
         login(browser)
@@ -704,10 +984,19 @@ def test_event_analysis_carries_known_telegram_gaps_into_limitations(tmp_path, m
         with sessions.begin() as db:
             chat = db.scalar(select(Chat).where(Chat.project_id == project))
             connection = db.get(TelegramConnection, chat.id)
-            open_gap(db, connection, "retention_expired", now - timedelta(seconds=30), now)
+            open_gap(
+                db, connection, "retention_expired", now - timedelta(seconds=30), now
+            )
             ingest_updates(
                 db,
-                [update(56, message(CHAT_A, 1, "Новое сообщение", date=int(now.timestamp())))],
+                [
+                    update(
+                        56,
+                        message(
+                            CHAT_A, 1, "Новое сообщение", date=int(now.timestamp())
+                        ),
+                    )
+                ],
                 bot_id="gap-analysis-bot",
                 now=now,
                 auto_analysis_enabled=True,
@@ -759,9 +1048,7 @@ def test_dispatcher_serializes_automatic_runs_per_project(tmp_path, monkeypatch)
         async def connect_temporal():
             return temporal
 
-        assert asyncio.run(
-            dispatch_once(sessions, connect_temporal, "test-queue")
-        )
+        assert asyncio.run(dispatch_once(sessions, connect_temporal, "test-queue"))
         assert len(temporal.started) == 1
 
         later = now + timedelta(seconds=1)
@@ -772,7 +1059,9 @@ def test_dispatcher_serializes_automatic_runs_per_project(tmp_path, monkeypatch)
                     update(
                         61,
                         {
-                            **message(CHAT_A, 1, "Поздняя редакция", date=int(now.timestamp())),
+                            **message(
+                                CHAT_A, 1, "Поздняя редакция", date=int(now.timestamp())
+                            ),
                             "edit_date": int(later.timestamp()),
                         },
                         kind="edited_message",
@@ -793,16 +1082,12 @@ def test_dispatcher_serializes_automatic_runs_per_project(tmp_path, monkeypatch)
             )
             second_event.next_attempt_at = later - timedelta(seconds=1)
 
-        assert not asyncio.run(
-            dispatch_once(sessions, connect_temporal, "test-queue")
-        )
+        assert not asyncio.run(dispatch_once(sessions, connect_temporal, "test-queue"))
         assert len(temporal.started) == 1
         with sessions.begin() as db:
             first_run = db.get(AnalysisRun, first_run_id)
             first_run.status = "succeeded"
-        assert asyncio.run(
-            dispatch_once(sessions, connect_temporal, "test-queue")
-        )
+        assert asyncio.run(dispatch_once(sessions, connect_temporal, "test-queue"))
         assert len(temporal.started) == 2
 
 

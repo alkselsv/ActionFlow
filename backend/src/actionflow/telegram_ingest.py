@@ -13,7 +13,7 @@ from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 
 from actionflow.api.telegram_import import add_observation
 from actionflow.persistence.analysis import AnalysisRun, OutboxEvent
@@ -357,6 +357,8 @@ def _request_analysis(
     now: datetime,
     debounce_seconds: int,
     report: IngestReport,
+    *,
+    scheduled_slot: int | None = None,
 ) -> None:
     """Persist/coalesce a project analysis request in the ingest transaction."""
     delay = max(0, min(int(debounce_seconds), 300))
@@ -365,6 +367,27 @@ def _request_analysis(
     )
     if project is None:
         return
+    scheduled_key = None
+    if scheduled_slot is not None:
+        scheduled_key = f"telegram-schedule:{scheduled_slot}"
+        connection = db.get(TelegramConnection, chat.id)
+        if connection is None or connection.status != "active":
+            return
+        if db.scalar(
+            select(AnalysisRun.id)
+            .where(
+                AnalysisRun.project_id == project.id,
+                or_(
+                    AnalysisRun.idempotency_key == scheduled_key,
+                    and_(
+                        AnalysisRun.apply_to_queue.is_(True),
+                        AnalysisRun.status.in_(("pending", "queued", "running")),
+                    ),
+                ),
+            )
+            .limit(1)
+        ):
+            return
     pending_run = db.scalar(
         select(AnalysisRun)
         .where(
@@ -377,7 +400,7 @@ def _request_analysis(
         .limit(1)
         .with_for_update()
     )
-    if pending_run is not None:
+    if pending_run is not None and scheduled_slot is None:
         outbox = db.scalar(
             select(OutboxEvent)
             .where(
@@ -391,16 +414,15 @@ def _request_analysis(
             pending_run.as_of = due_at
             pending_run.period_end = due_at
             pending_run.input_received_at = now
-            pending_run.request_hash = _analysis_hash(
-                pending_run.period_start, due_at
-            )
+            pending_run.request_hash = _analysis_hash(pending_run.period_start, due_at)
             outbox.next_attempt_at = now + timedelta(seconds=delay)
             report.analysis_runs_merged += 1
             return
 
-    first_message = db.scalar(
-        select(func.min(Message.sent_at)).where(Message.chat_id == chat.id)
-    )
+    first_query = select(func.min(Message.sent_at)).where(Message.chat_id == chat.id)
+    if scheduled_slot is not None:
+        first_query = first_query.where(Message.sent_at <= now)
+    first_message = db.scalar(first_query)
     if first_message is None:
         return
     due_at = max(now, as_utc(first_message)) + timedelta(microseconds=1)
@@ -428,7 +450,7 @@ def _request_analysis(
             apply_to_queue=True,
             status="pending",
             stage="dispatch",
-            idempotency_key=f"telegram-event:{run_id}",
+            idempotency_key=scheduled_key or f"telegram-event:{run_id}",
             request_hash=_analysis_hash(as_utc(first_message), due_at),
             workflow_id=f"analysis:{run_id}",
             created_at=created,
@@ -624,7 +646,9 @@ def ingest_updates(
         connection.updated_at = now
         report.accepted += 1
 
-    if maximum_update_id is not None and (seen or maximum_update_id != previous_update_id):
+    if maximum_update_id is not None and (
+        seen or maximum_update_id != previous_update_id
+    ):
         state.last_update_id = maximum_update_id
         state.last_update_at = now
     if username:

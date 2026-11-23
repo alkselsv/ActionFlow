@@ -8,7 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from actionflow.application.proposals import ensure_proposal
-from actionflow.application.rules import RuleResult, evaluate_commitment
+from actionflow.application.rules import RuleResult, evaluate_commitment, settings_at
 from actionflow.application.run_results import record_detector_result
 from actionflow.application.unanswered import load_detector_request
 from actionflow.detectors.contracts import (
@@ -184,7 +184,9 @@ def _upsert_commitment(
         if terms is not None and terms.due_expression
         else (anchor.text if event == "promise" else "")
     )
-    due = _due_for(anchor, expression, settings)
+    due = _due_for(
+        (update or anchor) if event == "reschedule" else anchor, expression, settings
+    )
     explicit_risk = bool(terms.explicit_risk) if terms is not None else False
     assignee = (
         terms.assignee_name
@@ -192,9 +194,7 @@ def _upsert_commitment(
         else anchor.author_name
     )
     subject_text = (
-        terms.subject_text
-        if terms is not None and terms.subject_text
-        else anchor.text
+        terms.subject_text if terms is not None and terms.subject_text else anchor.text
     )
 
     commitment = db.scalar(
@@ -216,6 +216,7 @@ def _upsert_commitment(
             status="open",
             due_at=due.due_at,
             due_uncertain=due.uncertain,
+            due_settings_version_id=settings.id if settings else None,
             explicit_risk=explicit_risk,
             created_at=now,
             updated_at=now,
@@ -245,16 +246,47 @@ def _upsert_commitment(
         if commitment.due_at is None and due.due_at is not None:
             commitment.due_at = due.due_at
             commitment.due_uncertain = due.uncertain
+            commitment.due_settings_version_id = settings.id if settings else None
         return commitment
 
     if event == "repeat":
         _add_event(db, commitment, "repeat", update)
         return commitment
 
+    if update is not None:
+        if db.scalar(
+            select(CommitmentEvent.id).where(
+                CommitmentEvent.commitment_id == commitment.id,
+                CommitmentEvent.kind == event,
+                CommitmentEvent.message_id == update.message_id,
+                CommitmentEvent.revision_id == update.revision_id,
+            )
+        ):
+            return commitment
+        latest = db.scalar(
+            select(CommitmentEvent)
+            .where(
+                CommitmentEvent.commitment_id == commitment.id,
+                CommitmentEvent.kind.in_(("reschedule", "cancel", "fulfill")),
+            )
+            .order_by(CommitmentEvent.at.desc(), CommitmentEvent.created_at.desc())
+            .limit(1)
+        )
+        if latest and (
+            as_utc(latest.at) > as_utc(update.sent_at)
+            or (
+                latest.message_id == update.message_id
+                and latest.revision_id == update.revision_id
+                and latest.kind == event
+            )
+        ):
+            return commitment
+
     previous_due = commitment.due_at
     if event == "reschedule":
         commitment.due_at = due.due_at
         commitment.due_uncertain = due.uncertain
+        commitment.due_settings_version_id = settings.id if settings else None
         commitment.status = "open"
         _add_event(
             db,
@@ -455,9 +487,7 @@ def analyze_commitments(
     raw = detector.detect(request)
     result = _as_result(raw)
     if result.finding_type != "commitment":
-        raise InvalidDetectorOutput(
-            f"Unsupported finding type: {result.finding_type}"
-        )
+        raise InvalidDetectorOutput(f"Unsupported finding type: {result.finding_type}")
     if deadline is not None and utc_now() >= deadline:
         raise DetectorTimeout("Detector deadline elapsed")
     validations = validate_result(
@@ -510,8 +540,7 @@ def analyze_commitments(
                 rejected.append(
                     {
                         "candidate_key": candidate_model.candidate_key,
-                        "errors": list(validation.errors)
-                        or ["anchor_not_in_input"],
+                        "errors": list(validation.errors) or ["anchor_not_in_input"],
                     }
                 )
                 continue
@@ -547,34 +576,42 @@ def analyze_commitments(
             _store_evidence(db, candidate_row, validation)
             if validation.status == "valid" and run.apply_to_queue:
                 update = _update_message(candidate_model, input_by_id)
+                effective = settings_at(db, run, settings, (update or anchor).sent_at)
                 commitment = _upsert_commitment(
-                    db, run, candidate_model, anchor, update, settings
+                    db, run, candidate_model, anchor, update, effective
                 )
                 candidate_row.subject_id = commitment.id
                 rules = evaluate_commitment(
-                    run, settings, commitment, candidate_model
+                    run, effective, commitment, candidate_model, anchor.sent_at
                 )
-                _upsert_finding(
-                    db, run, candidate_row, validation, commitment, rules
-                )
-        run.finding_count = db.scalar(
-            select(func.count())
-            .select_from(FindingObservation)
-            .where(FindingObservation.run_id == run.id)
-        ) or 0
-        run.candidate_count = db.scalar(
-            select(func.count())
-            .select_from(Candidate)
-            .where(Candidate.run_id == run.id)
-        ) or 0
-        run.invalid_candidate_count = db.scalar(
-            select(func.count())
-            .select_from(Candidate)
-            .where(
-                Candidate.run_id == run.id,
-                Candidate.validation_status == "invalid",
+                _upsert_finding(db, run, candidate_row, validation, commitment, rules)
+        run.finding_count = (
+            db.scalar(
+                select(func.count())
+                .select_from(FindingObservation)
+                .where(FindingObservation.run_id == run.id)
             )
-        ) or 0
+            or 0
+        )
+        run.candidate_count = (
+            db.scalar(
+                select(func.count())
+                .select_from(Candidate)
+                .where(Candidate.run_id == run.id)
+            )
+            or 0
+        )
+        run.invalid_candidate_count = (
+            db.scalar(
+                select(func.count())
+                .select_from(Candidate)
+                .where(
+                    Candidate.run_id == run.id,
+                    Candidate.validation_status == "invalid",
+                )
+            )
+            or 0
+        )
         old_limitations = dict(run.limitations or {})
         old_limitations["commitment"] = {
             "candidate_count": len(result.candidates),
