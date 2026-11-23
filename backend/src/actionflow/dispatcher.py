@@ -1,8 +1,9 @@
 import asyncio
 from datetime import timedelta
 
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import aliased
 from temporalio.client import Client, WorkflowExecutionStatus
 from temporalio.common import WorkflowIDReusePolicy
 from temporalio.exceptions import WorkflowAlreadyStartedError
@@ -11,26 +12,79 @@ from temporalio.service import RPCError
 from actionflow.application.analysis_input import TERMINAL
 from actionflow.config import Settings
 from actionflow.persistence.analysis import AnalysisRun, OutboxEvent
-from actionflow.persistence.database import database, utc_now
+from actionflow.persistence.database import Project, database, utc_now
 
 MAX_ATTEMPTS = 10
 
 
 async def dispatch_once(sessions, connect, queue):
+    active_run = aliased(AnalysisRun)
     with sessions.begin() as db:
-        event = db.scalar(
-            select(OutboxEvent)
+        eligible = (
+            select(Project)
+            .join(AnalysisRun, AnalysisRun.project_id == Project.id)
+            .join(OutboxEvent, OutboxEvent.aggregate_id == AnalysisRun.id)
             .where(
                 OutboxEvent.status.in_(("pending", "retrying")),
                 OutboxEvent.next_attempt_at <= utc_now(),
+                ~exists(
+                    select(active_run.id).where(
+                        active_run.project_id == AnalysisRun.project_id,
+                        active_run.id != AnalysisRun.id,
+                        active_run.status.in_(("queued", "running")),
+                    )
+                ),
             )
-            .order_by(OutboxEvent.next_attempt_at, OutboxEvent.id)
+            .order_by(
+                OutboxEvent.next_attempt_at,
+                AnalysisRun.created_at,
+                OutboxEvent.id,
+            )
             .limit(1)
-            .with_for_update(skip_locked=True)
+        )
+        # Ingestion also locks Project before coalescing an event and updating
+        # its outbox row. Use the same lock order here to avoid a project/outbox
+        # deadlock when a new Telegram update arrives as dispatch begins.
+        project = db.scalar(eligible.with_for_update(skip_locked=True, of=Project))
+        if project is None:
+            return False
+        event = db.scalar(
+            select(OutboxEvent)
+            .join(AnalysisRun, AnalysisRun.id == OutboxEvent.aggregate_id)
+            .where(
+                AnalysisRun.project_id == project.id,
+                OutboxEvent.status.in_(("pending", "retrying")),
+                OutboxEvent.next_attempt_at <= utc_now(),
+                ~exists(
+                    select(active_run.id).where(
+                        active_run.project_id == AnalysisRun.project_id,
+                        active_run.id != AnalysisRun.id,
+                        active_run.status.in_(("queued", "running")),
+                    )
+                ),
+            )
+            .order_by(
+                OutboxEvent.next_attempt_at,
+                AnalysisRun.created_at,
+                OutboxEvent.id,
+            )
+            .limit(1)
+            .with_for_update(skip_locked=True, of=OutboxEvent)
         )
         if event is None:
             return False
         run = db.get(AnalysisRun, event.aggregate_id)
+        active = db.scalar(
+            select(AnalysisRun.id)
+            .where(
+                AnalysisRun.project_id == run.project_id,
+                AnalysisRun.id != run.id,
+                AnalysisRun.status.in_(("queued", "running")),
+            )
+            .limit(1)
+        )
+        if active is not None:
+            return False
         event.attempts += 1
         execution_id = None
         try:

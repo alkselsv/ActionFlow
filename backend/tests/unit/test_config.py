@@ -50,3 +50,23 @@ def test_explicit_database_url_wins_and_openai_defaults_are_empty(monkeypatch):
 
     assert settings.database_url.endswith("@db.example:6543/custom")
     assert settings.llm_configured is False
+
+
+def test_telegram_event_analysis_is_opt_in_and_debounce_is_configurable(monkeypatch):
+    monkeypatch.setenv("ACTIONFLOW_DATABASE_URL", "sqlite://")
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "123456789:synthetic-test-token")
+    monkeypatch.delenv("ACTIONFLOW_TELEGRAM_AUTO_ANALYSIS_ENABLED", raising=False)
+    monkeypatch.delenv("ACTIONFLOW_TELEGRAM_ANALYSIS_DEBOUNCE_SECONDS", raising=False)
+
+    defaults = Settings.from_env()
+
+    assert defaults.telegram_auto_analysis_enabled is False
+    assert defaults.telegram_analysis_debounce_seconds == 10
+    assert defaults.telegram_bot_token == "123456789:synthetic-test-token"
+
+    monkeypatch.setenv("ACTIONFLOW_TELEGRAM_AUTO_ANALYSIS_ENABLED", "true")
+    monkeypatch.setenv("ACTIONFLOW_TELEGRAM_ANALYSIS_DEBOUNCE_SECONDS", "20")
+    configured = Settings.from_env()
+
+    assert configured.telegram_auto_analysis_enabled is True
+    assert configured.telegram_analysis_debounce_seconds == 20

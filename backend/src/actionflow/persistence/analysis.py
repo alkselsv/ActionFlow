@@ -30,6 +30,7 @@ class AnalysisRun(Base):
     period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     period_end: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     as_of: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    input_received_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     apply_to_queue: Mapped[bool]
     status: Mapped[str] = mapped_column(String(20), default="pending")
     stage: Mapped[str] = mapped_column(String(30), default="dispatch")

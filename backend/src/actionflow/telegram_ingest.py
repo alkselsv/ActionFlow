@@ -13,15 +13,17 @@ from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from actionflow.api.telegram_import import add_observation
-from actionflow.persistence.database import as_utc, new_id, utc_now
+from actionflow.persistence.analysis import AnalysisRun, OutboxEvent
+from actionflow.persistence.database import Project, as_utc, new_id, utc_now
 from actionflow.persistence.project_settings import (
     Chat,
     Message,
     MessageRevision,
     Participant,
+    SettingsVersion,
 )
 from actionflow.persistence.telegram import (
     TelegramBotState,
@@ -95,6 +97,8 @@ class IngestReport:
     unchanged: int = 0
     non_text: int = 0
     service_events: int = 0
+    analysis_runs_created: int = 0
+    analysis_runs_merged: int = 0
     last_update_id: int | None = None
     rejected_reasons: dict[str, int] = field(default_factory=dict)
 
@@ -112,6 +116,8 @@ class IngestReport:
             "unchanged": self.unchanged,
             "non_text": self.non_text,
             "service_events": self.service_events,
+            "analysis_runs_created": self.analysis_runs_created,
+            "analysis_runs_merged": self.analysis_runs_merged,
             "last_update_id": self.last_update_id,
             "rejected_reasons": dict(self.rejected_reasons),
         }
@@ -296,7 +302,7 @@ def _store_event(
     snapshot: dict[str, Any],
     report: IngestReport,
     now: datetime,
-) -> None:
+) -> bool:
     message = db.scalar(
         select(Message).where(
             Message.chat_id == chat.id, Message.external_id == message_id
@@ -332,6 +338,111 @@ def _store_event(
         report.unchanged += 1
     report.non_text += int(bool(snapshot.get("attachments")))
     report.service_events += int(snapshot.get("source_type") == "service")
+    return created or observation is not None
+
+
+def _analysis_hash(period_start: datetime, period_end: datetime) -> str:
+    payload = {
+        "period_start": period_start.isoformat(),
+        "period_end": period_end.isoformat(),
+        "as_of": period_end.isoformat(),
+        "apply_to_queue": True,
+    }
+    return sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+
+
+def _request_analysis(
+    db,
+    chat: Chat,
+    now: datetime,
+    debounce_seconds: int,
+    report: IngestReport,
+) -> None:
+    """Persist/coalesce a project analysis request in the ingest transaction."""
+    delay = max(0, min(int(debounce_seconds), 300))
+    project = db.scalar(
+        select(Project).where(Project.id == chat.project_id).with_for_update()
+    )
+    if project is None:
+        return
+    pending_run = db.scalar(
+        select(AnalysisRun)
+        .where(
+            AnalysisRun.project_id == project.id,
+            AnalysisRun.idempotency_key.like("telegram-event:%"),
+            AnalysisRun.status == "pending",
+            AnalysisRun.created_at >= now - timedelta(seconds=delay),
+        )
+        .order_by(AnalysisRun.created_at.desc(), AnalysisRun.id.desc())
+        .limit(1)
+        .with_for_update()
+    )
+    if pending_run is not None:
+        outbox = db.scalar(
+            select(OutboxEvent)
+            .where(
+                OutboxEvent.aggregate_id == pending_run.id,
+                OutboxEvent.status.in_(("pending", "retrying")),
+            )
+            .with_for_update()
+        )
+        if outbox is not None:
+            due_at = now + timedelta(microseconds=1)
+            pending_run.as_of = due_at
+            pending_run.period_end = due_at
+            pending_run.input_received_at = now
+            pending_run.request_hash = _analysis_hash(
+                pending_run.period_start, due_at
+            )
+            outbox.next_attempt_at = now + timedelta(seconds=delay)
+            report.analysis_runs_merged += 1
+            return
+
+    first_message = db.scalar(
+        select(func.min(Message.sent_at)).where(Message.chat_id == chat.id)
+    )
+    if first_message is None:
+        return
+    due_at = max(now, as_utc(first_message)) + timedelta(microseconds=1)
+    created = now
+    settings_version_id = db.scalar(
+        select(SettingsVersion.id)
+        .where(
+            SettingsVersion.project_id == project.id,
+            SettingsVersion.created_at <= created,
+        )
+        .order_by(SettingsVersion.version_no.desc())
+        .limit(1)
+    )
+    run_id = new_id()
+    db.add(
+        AnalysisRun(
+            id=run_id,
+            project_id=project.id,
+            chat_id=chat.id,
+            settings_version_id=settings_version_id,
+            period_start=as_utc(first_message),
+            period_end=due_at,
+            as_of=due_at,
+            input_received_at=now,
+            apply_to_queue=True,
+            status="pending",
+            stage="dispatch",
+            idempotency_key=f"telegram-event:{run_id}",
+            request_hash=_analysis_hash(as_utc(first_message), due_at),
+            workflow_id=f"analysis:{run_id}",
+            created_at=created,
+        )
+    )
+    db.flush()
+    db.add(
+        OutboxEvent(
+            aggregate_id=run_id,
+            event_key=run_id,
+            next_attempt_at=now + timedelta(seconds=delay),
+        )
+    )
+    report.analysis_runs_created += 1
 
 
 def _connection(db, chat_id: str):
@@ -360,6 +471,8 @@ def ingest_updates(
     bot_id: str,
     username: str | None = None,
     now: datetime | None = None,
+    auto_analysis_enabled: bool = False,
+    analysis_debounce_seconds: int = 10,
 ) -> IngestReport:
     """Write a batch and move the bot cursor inside the caller's transaction."""
     if not bot_id:
@@ -486,7 +599,7 @@ def ingest_updates(
             report.reject(str(reason))
             continue
         message_id, sent_at, edited_at, snapshot = normalized
-        _store_event(
+        changed = _store_event(
             db,
             chat,
             message_id,
@@ -496,6 +609,14 @@ def ingest_updates(
             report,
             now,
         )
+        if auto_analysis_enabled and changed and snapshot["source_type"] == "message":
+            _request_analysis(
+                db,
+                chat,
+                now,
+                analysis_debounce_seconds,
+                report,
+            )
         previous_event_at = as_utc(connection.last_event_at)
         event_at = edited_at or sent_at
         connection.last_event_at = max(previous_event_at or event_at, event_at)
