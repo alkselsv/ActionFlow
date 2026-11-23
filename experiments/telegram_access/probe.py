@@ -198,7 +198,32 @@ def compare_export(export_rows: list[dict[str, Any]], update_rows: list[dict[str
                  row.get("text_sha256") == item.get("text_sha256") and
                  row.get("reply_to_message_id") == item.get("reply_to_message_id") and
                  row.get("date") == item.get("date")]
+        content_candidates = [row for row in message_updates if
+                              item.get("actor_key") is not None and
+                              item.get("date") is not None and
+                              item.get("text_sha256") is not None and
+                              row.get("actor_key") == item.get("actor_key") and
+                              row.get("date") == item.get("date") and
+                              row.get("content_type") == item.get("content_type") and
+                              row.get("text_sha256") == item.get("text_sha256")]
         match = exact[0] if len(exact) == 1 else None
+        candidate_match = content_candidates[0] if not exact and not candidates and len(content_candidates) == 1 else None
+        comparison_match = match or candidate_match
+        if match:
+            match_status = "matched"
+            match_basis = "chat_message_id"
+        elif candidates or len(exact) > 1:
+            match_status = "ambiguous"
+            match_basis = None
+        elif len(content_candidates) == 1:
+            match_status = "candidate_id_mismatch"
+            match_basis = "content_time_author"
+        elif len(content_candidates) > 1:
+            match_status = "ambiguous"
+            match_basis = None
+        else:
+            match_status = "chat_id_mismatch" if same_message_id else "not_observed"
+            match_basis = None
         comparisons.append({
             "message_key": key(f'{item.get("chat_key")}:{item["message_id"]}'),
             "reply_message_key": key(f'{item.get("chat_key")}:{item["reply_to_message_id"]}') if item.get("reply_to_message_id") is not None else None,
@@ -206,13 +231,15 @@ def compare_export(export_rows: list[dict[str, Any]], update_rows: list[dict[str
             "chat_id_converted_match": bool(candidates),
             "same_message_id_count": len(same_message_id),
             "same_chat_message_id_count": len(candidates),
-            "match_status": "matched" if match else "ambiguous" if candidates else "chat_id_mismatch" if same_message_id else "not_observed",
-            "message_id_equal": bool(match) and item.get("message_id") == match.get("message_id"),
-            "reply_key_equal": bool(match) and item.get("reply_to_message_id") == match.get("reply_to_message_id"),
-            "author_key_equal": bool(match) and item.get("actor_key") == match.get("actor_key"),
-            "timestamp_equal": bool(match) and item.get("date") == match.get("date"),
-            "edit_timestamp_equal": bool(match) and item.get("edit_date") == match.get("edit_date"),
-            "text_equal": bool(match),
+            "match_status": match_status,
+            "match_basis": match_basis,
+            "candidate_count": len(content_candidates),
+            "message_id_equal": bool(comparison_match) and item.get("message_id") == comparison_match.get("message_id"),
+            "reply_key_equal": bool(comparison_match) and item.get("reply_to_message_id") == comparison_match.get("reply_to_message_id"),
+            "author_key_equal": bool(comparison_match) and item.get("actor_key") == comparison_match.get("actor_key"),
+            "timestamp_equal": bool(comparison_match) and item.get("date") == comparison_match.get("date"),
+            "edit_timestamp_equal": bool(comparison_match) and item.get("edit_date") == comparison_match.get("edit_date"),
+            "text_equal": bool(comparison_match) and item.get("text_sha256") == comparison_match.get("text_sha256"),
         })
     return comparisons
 

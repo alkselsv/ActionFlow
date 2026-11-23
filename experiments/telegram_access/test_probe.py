@@ -131,6 +131,33 @@ class NormalizeUpdatesTests(unittest.TestCase):
         self.assertEqual(result["match_status"], "chat_id_mismatch")
         self.assertFalse(result["chat_id_exact_match"])
 
+    def test_content_time_author_match_is_only_a_review_candidate_when_ids_differ(self):
+        update = normalize_updates([{"update_id": 2, "message": {
+            "message_id": 210, "date": 1790000000,
+            "chat": {"id": -1000000000456, "type": "supergroup"},
+            "from": {"id": 42}, "text": "unique synthetic event",
+        }}])[0]
+        export = [{
+            "chat_key": "per-run-key-for-another-chat-id",
+            "chat_id_value": -1000000000999,
+            "raw_chat_id_value": 999,
+            "message_id": 10,
+            "reply_to_message_id": None,
+            "actor_key": update["actor_key"],
+            "date": 1790000000,
+            "edit_date": None,
+            "content_type": "text",
+            "text_sha256": update["text_sha256"],
+        }]
+        result = compare_export(export, [update])[0]
+        self.assertEqual(result["match_status"], "candidate_id_mismatch")
+        self.assertEqual(result["match_basis"], "content_time_author")
+        self.assertFalse(result["message_id_equal"])
+        self.assertFalse(result["chat_id_converted_match"])
+        self.assertTrue(result["author_key_equal"])
+        self.assertTrue(result["timestamp_equal"])
+        self.assertTrue(result["text_equal"])
+
 
 if __name__ == "__main__":
     unittest.main()

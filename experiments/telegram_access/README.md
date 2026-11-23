@@ -72,9 +72,11 @@ Do not grant administrator rights just to make message visibility work.
 
 ## Status of evidence
 
-Official behavior is documented in the protocol at
+Official behavior and the manually reported live evidence are documented in
 [`docs/experiment/af-026-telegram-access.md`](../../docs/experiment/af-026-telegram-access.md).
-The probe's unit tests use synthetic updates. They verify redaction and field
-normalization, not Telegram connectivity. Live message visibility, the actual
-Telegram Desktop export schema/IDs, non-text delivery, and membership-change
-delivery remain unverified until the owner runs the steps above.
+The probe's unit tests use synthetic updates. They verify redaction, field
+normalization, and conservative candidate reporting, not Telegram connectivity.
+Live visibility, message/reply/edit matching, sticker delivery, and membership
+changes were confirmed by the test-group owner. Four export rows remained
+unobserved in the one-shot poll; this is recorded as an observation, not proof
+of a specific cause. Raw exports and per-run reports stay outside the repo.
