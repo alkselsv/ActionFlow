@@ -5,12 +5,15 @@ from actionflow.persistence.analysis import AnalysisRun
 from actionflow.persistence.database import Base, database
 from actionflow.persistence.findings import Candidate, Finding
 from actionflow.persistence.project_settings import SettingsVersion
+from actionflow.persistence.telegram import TelegramBotState, TelegramConnection
 
 assert (
     SettingsVersion.metadata
     is AnalysisRun.metadata
     is Candidate.metadata
     is Finding.metadata
+    is TelegramConnection.metadata
+    is TelegramBotState.metadata
     is Base.metadata
 )
 

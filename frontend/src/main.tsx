@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { ApiError, errorMessage, request, uploadTelegram, type Manager, type Project, type ConversationMessage, type MessageRevision } from "./api/client";
 import { ProjectSettingsForm } from "./features/projects/ProjectSettings";
 import { AnalysisPreparation } from "./features/projects/AnalysisPreparation";
+import { TelegramConnectionPanel } from "./features/projects/TelegramConnectionPanel";
 import { FindingsQueue } from "./features/findings/FindingsQueue";
 import "./style.css";
 
@@ -156,12 +157,13 @@ function Projects({ onExpired }: { onExpired: () => void }) {
         : project);
     }} />}
     {selected && <section className="panel conversation"><h2>Переписка · {selected.name}</h2>
+      <button type="button" className="quiet" disabled={busy} onClick={() => void perform(() => loadMessages(selected))}>Обновить переписку</button>
       <form onSubmit={importFile}><label>Экспорт Telegram JSON<input type="file" name="telegram" accept="application/json,.json" required onChange={() => { uploadKey.current = null; }} /></label><button disabled={busy}>Импортировать</button></form>
       {importReport && <p role="status">{importReport}</p>}
       {messages.length > 0 && <p>Экспорт показывает только доступные сообщения и редакции. Отсутствие записи не подтверждает удаление.</p>}
       {messages.map((message) => <article key={message.id} id={"message-" + message.external_id}>
         <strong>{message.source_type === "service" ? "Системное событие" : message.author.name ?? message.author.id ?? "Неизвестный автор"}</strong>
-        {message.source_type === "message" && <> · {message.author.side}</>} · <time>{new Date(message.sent_at).toLocaleString()}</time>
+        {message.source_type === "message" && <> · {message.author.side}</>} · {message.source === "telegram_bot" ? "бот" : "экспорт"} · <time>{new Date(message.sent_at).toLocaleString()}</time>
         {message.source_type === "service" && <p>{message.service_action ?? "Неизвестное действие"} · {message.actor_name ?? "Неизвестный участник события"}</p>}
         <p>{message.text || "[Нет текста]"}</p>
         {Object.keys(message.attachments).length > 0 && <p>{message.attachments.media_type === "voice_message" || "voice_message" in message.attachments ? "Голосовое сообщение" : "Вложение"}. Содержимое не обработано.</p>}
@@ -183,6 +185,7 @@ function Projects({ onExpired }: { onExpired: () => void }) {
       {selected && messages.length === 0 && !busy && <p>Сообщений пока нет.</p>}
       {messageCursor && <button className="quiet" disabled={busy} onClick={() => void perform(() => loadMessages(selected, messageCursor))}>Ещё сообщения</button>}
     </section>}
+    {selected && <TelegramConnectionPanel key={selected.id + "-telegram"} projectId={selected.id} onExpired={onExpired} onChanged={() => void perform(() => loadMessages(selected))} />}
     {selected && <AnalysisPreparation key={selected.id} projectId={selected.id} onExpired={onExpired} onCompleted={() => setQueueRevision((revision) => revision + 1)} />}
     {selected && <FindingsQueue key={selected.id + "-queue-" + queueRevision} projectId={selected.id} onExpired={onExpired} />}
   </>;

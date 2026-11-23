@@ -111,6 +111,7 @@ def revision_result(revision):
         "text": snapshot["text"],
         "text_format": snapshot["text_format"],
         "reply_to_external_id": snapshot["reply_to_external_id"],
+        "source": snapshot.get("source_kind", "telegram_import"),
         "source_type": snapshot.get("source_type", "message"),
         "service_action": snapshot.get("service_action"),
         "actor_id": snapshot.get("actor_id"),
@@ -124,10 +125,9 @@ def revision_result(revision):
     }
 
 
-def content_signature(snapshot):
-    return (
+def content_signature(snapshot, *, include_format=True):
+    signature = [
         snapshot["text"],
-        snapshot["text_format"],
         snapshot["reply_to_external_id"],
         snapshot.get("participant_id"),
         snapshot.get("source_type", "message"),
@@ -135,6 +135,26 @@ def content_signature(snapshot):
         snapshot.get("actor_id"),
         snapshot.get("actor_name"),
         snapshot.get("attachments", {}),
+    ]
+    if include_format:
+        signature.insert(1, snapshot["text_format"])
+    return tuple(signature)
+
+
+def same_content(first, second):
+    """Compare observations across import and Bot API representations.
+
+    Telegram Desktop and Bot API use different entity shapes for the same
+    message. Formatting is therefore ignored only when the two observations
+    came from different transports. A same-transport formatting edit still
+    creates a revision.
+    """
+    first_kind = first.get("source_kind", "telegram_import")
+    second_kind = second.get("source_kind", "telegram_import")
+    if first_kind == second_kind:
+        return content_signature(first) == content_signature(second)
+    return content_signature(first, include_format=False) == content_signature(
+        second, include_format=False
     )
 
 
@@ -143,7 +163,6 @@ def add_observation(db, message, versions, snapshot, edited, source_observed, no
         (version for version in reversed(versions) if version.is_current), None
     )
     previous_edit = as_utc(active.edited_at) if active else None
-    signature = content_signature(snapshot)
     source_revision = snapshot.get("source_revision")
     active_source_revision = active.snapshot.get("source_revision") if active else None
     comparable = source_revision is not None and active_source_revision is not None
@@ -151,7 +170,7 @@ def add_observation(db, message, versions, snapshot, edited, source_observed, no
         active
         and edited == previous_edit
         and (not comparable or source_revision == active_source_revision)
-        and signature == content_signature(active.snapshot)
+        and same_content(snapshot, active.snapshot)
     ):
         known_source = as_utc(active.source_observed_at)
         if source_observed is not None and (
@@ -171,7 +190,7 @@ def add_observation(db, message, versions, snapshot, edited, source_observed, no
         is_newer = source_revision > active_source_revision
     if not is_newer and any(
         edited == as_utc(version.edited_at)
-        and signature == content_signature(version.snapshot)
+        and same_content(snapshot, version.snapshot)
         for version in versions
     ):
         return False, False, False
@@ -332,6 +351,7 @@ def import_chat(db, project, payload, key=None):
             "actor_id": external_id(item.get("actor_id")) if service else None,
             "actor_name": source_label(item.get("actor")) if service else None,
             "source_date": item.get("date"),
+            "source_kind": "telegram_import",
             "source_revision": source.get("revision")
             if type(source.get("revision")) is int
             else None,
