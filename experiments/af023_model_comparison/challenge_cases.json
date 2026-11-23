@@ -1,0 +1,50 @@
+{
+  "dataset_id": "af023-synthetic-development-challenges-v1",
+  "created_at": "2026-11-23",
+  "purpose": "Development-only challenge cases covering the unanswered detector changes made between its M1 rule versions.",
+  "cases": [
+    {
+      "id": "c-101",
+      "messages": [
+        {"id": "c-101-1", "side": "customer", "text": "Не принимают платежи уже второй час."}
+      ],
+      "expected_unanswered": true,
+      "reason": "Operational blockage without a question mark."
+    },
+    {
+      "id": "c-102",
+      "messages": [
+        {"id": "c-102-1", "side": "customer", "text": "Во сколько будет демонстрация?"},
+        {"id": "c-102-2", "side": "vedita", "text": "Покажем завтра в 11:00."}
+      ],
+      "expected_unanswered": false,
+      "reason": "A concrete scheduled answer resolves a timing question."
+    },
+    {
+      "id": "c-103",
+      "messages": [
+        {"id": "c-103-1", "side": "customer", "text": "Можно прислать обновленный отчет?"},
+        {"id": "c-103-2", "side": "vedita", "text": "Проверю и вернусь завтра."}
+      ],
+      "expected_unanswered": true,
+      "reason": "Acknowledgement is a first reaction, not resolution."
+    },
+    {
+      "id": "c-104",
+      "messages": [
+        {"id": "c-104-1", "side": "customer", "text": "Пакет документов получили."}
+      ],
+      "expected_unanswered": false,
+      "reason": "A neutral statement is not an unanswered request."
+    },
+    {
+      "id": "c-105",
+      "messages": [
+        {"id": "c-105-1", "side": "customer", "text": "Где посмотреть акт?"},
+        {"id": "c-105-2", "side": "vedita", "text": "Файл отправлен."}
+      ],
+      "expected_unanswered": false,
+      "reason": "A substantive sent-file response resolves the request."
+    }
+  ]
+}

@@ -1,0 +1,1852 @@
+{
+  "metadata": {
+    "af_id": "AF-023 part 1",
+    "evaluated_at": "2026-11-23",
+    "current_commit": "15b0d6a245275a24b1bdbff17fee7ff655ecb22e",
+    "development_only": true,
+    "holdout_executed": false,
+    "candidates": [
+      "local-rules-v1",
+      "local-rules-v2",
+      "local-rules-v3"
+    ],
+    "evaluator_sha256": "02c49729e1112a828b0028f1ab8cc8a01b1f000e50bf222ba864c95e2052732c",
+    "annotation_sha256": "087cfd11cde199eac789655b349938e84b36ee4eb709b45d361996d13105e776",
+    "fixture_sha256": {
+      "data/fixtures/telegram/edge-edited-s-005.json": "d7eaa4e20fbb255e4492942eafd59732f9bb1e7f14c1fe722f02ce3b88da6623",
+      "data/fixtures/telegram/edge-format-s-002.json": "2e6967720cb1d1109c3f12759192bb9e3a7152c7fcc6a2f2127892c025845773",
+      "data/fixtures/telegram/edge-media-s-003.json": "9a7cfeac3b27ed9ecb8ff043b38e70b7f845aba1e4238f1836a44e5dc0dacf24",
+      "data/fixtures/telegram/edge-reimport-s-006-first.json": "13a853ff4a6549fb527b7611b8888753beb62e454afb8359193a2baf6055d4ad",
+      "data/fixtures/telegram/edge-reimport-s-006-second.json": "d9f931710889aeafc27fba8870b12eb1b65dcbcc8c81d300cd4d36d90643bbf2",
+      "data/fixtures/telegram/edge-service-s-004.json": "f339f7e95e148183d58c04b610c94a0037223e5d50c7f8e576d3ef0515060071",
+      "data/fixtures/telegram/north-conv-n-001.json": "5a8e0e8b2845fbc43a45697bd5b4f808f93b72cd8c21905bb9413a83137a421e",
+      "data/fixtures/telegram/north-conv-n-002.json": "e70a6f59ddf390a69fae3692808fc45553f84d95b96064d7d4c57f8030c9a662",
+      "data/fixtures/telegram/north-conv-n-003.json": "1479bcd103d2ac8fe62b346c42a856cbbe0aca365a226720544ec26b76e85372",
+      "data/fixtures/telegram/north-conv-n-004.json": "17022da2b39a7fc185e2be6fa8295ed26e08793d8b7b574ec70533c035e84d78",
+      "data/fixtures/telegram/north-conv-n-005.json": "d3ef68fabd5bbd728566f2b986d2fd58828c07aee3922adad8275154c09d6ae6",
+      "data/fixtures/telegram/north-conv-n-006.json": "a9a95caddb14b2007509c2e2c263478b33c60fa8356a6fa10fb4260c716c8fdd",
+      "data/fixtures/telegram/north-conv-n-007.json": "e36ed7a811c8718224031c76aa31432f8bf6fbba6d42913ef852a45dbd88605a",
+      "data/fixtures/telegram/north-conv-n-008.json": "0d8d9b4ba7d9731db12ea1cb1186a312b3296b98f606a261537e20e840c28177",
+      "data/fixtures/telegram/south-conv-s-001.json": "50124e2b10523ec606c82fdb46e7e6efc8b1c5374f46d6e8e13a22b3ae00e583"
+    },
+    "challenge_sha256": "5393444c9e10a474faa918f7f1d301119e2da5b06d47dde91814cc06cfb5de85",
+    "uv_lock_sha256": "7a7b59771c46048db4bb6327fc1248b09d5c8f4277c37176070921213cc2a269"
+  },
+  "results": [
+    {
+      "name": "local-rules-v1",
+      "source_commit": "ffff2775623b8d533a4a663daf119702eb69244b",
+      "source_sha256": "6fe826386b39c7189b08df7c9af3c30354b55f132d9b2389f1586dc434e86c74",
+      "prompt_version": "unanswered-rules-v1",
+      "detector_version": "local-unanswered-v1",
+      "model_id": "local-baseline-unanswered-v1",
+      "model_params": {
+        "strategy": "rules",
+        "version": "local-unanswered-v1"
+      },
+      "metrics": {
+        "unanswered": {
+          "duplicates": 0,
+          "tp": 4,
+          "evidence_correct": 4,
+          "sla_checked": 4,
+          "sla_errors": 0,
+          "fp": 0,
+          "fn": 0,
+          "invalid": 0,
+          "precision": 1.0,
+          "recall": 1.0
+        },
+        "commitment": {
+          "duplicates": 0,
+          "tp": 5,
+          "evidence_correct": 5,
+          "fp": 0,
+          "fn": 0,
+          "sla_checked": 0,
+          "sla_errors": 0,
+          "invalid": 0,
+          "precision": 1.0,
+          "recall": 1.0
+        },
+        "complaint": {
+          "duplicates": 0,
+          "tp": 1,
+          "evidence_correct": 1,
+          "fp": 0,
+          "fn": 0,
+          "sla_checked": 0,
+          "sla_errors": 0,
+          "invalid": 0,
+          "precision": 1.0,
+          "recall": 1.0
+        }
+      },
+      "slices": [
+        {
+          "split": "development",
+          "chat": "n-001",
+          "as_of": "2026-09-14T06:30:00+00:00",
+          "duration_seconds": 0.055094,
+          "cost_usd": null,
+          "input_limitations": {
+            "attachments": 0,
+            "unknown_authors": 0,
+            "system_events": 0,
+            "message_count": 3,
+            "context_messages": 0,
+            "missing_settings": false,
+            "unavailable_messages": 0,
+            "history_incomplete": true,
+            "uncertain_revisions": 0
+          },
+          "detectors": {
+            "unanswered": {
+              "model": "local-baseline-unanswered-v1",
+              "detector_version": "local-unanswered-v1",
+              "duration_ms": 1,
+              "usage": {
+                "input_tokens": 28,
+                "output_tokens": 39,
+                "total_tokens": 67,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "commitment": {
+              "model": "local-baseline-commitment-v1",
+              "detector_version": "local-commitment-v1",
+              "duration_ms": 1,
+              "usage": {
+                "input_tokens": 28,
+                "output_tokens": 18,
+                "total_tokens": 46,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "complaint": {
+              "model": "local-baseline-complaint-v1",
+              "detector_version": "local-complaint-v1",
+              "duration_ms": 0,
+              "usage": {
+                "input_tokens": 28,
+                "output_tokens": 0,
+                "total_tokens": 28,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            }
+          },
+          "counts": {
+            "unanswered": {
+              "duplicates": 0,
+              "tp": 1,
+              "evidence_correct": 1,
+              "sla_checked": 1,
+              "sla_errors": 0
+            },
+            "commitment": {
+              "duplicates": 0,
+              "tp": 1,
+              "evidence_correct": 1
+            },
+            "complaint": {}
+          }
+        },
+        {
+          "split": "development",
+          "chat": "n-001",
+          "as_of": "2026-09-14T09:15:00+00:00",
+          "duration_seconds": 0.040545,
+          "cost_usd": null,
+          "input_limitations": {
+            "attachments": 0,
+            "unknown_authors": 0,
+            "system_events": 0,
+            "message_count": 6,
+            "context_messages": 0,
+            "missing_settings": false,
+            "unavailable_messages": 0,
+            "history_incomplete": true,
+            "uncertain_revisions": 0
+          },
+          "detectors": {
+            "unanswered": {
+              "model": "local-baseline-unanswered-v1",
+              "detector_version": "local-unanswered-v1",
+              "duration_ms": 1,
+              "usage": {
+                "input_tokens": 51,
+                "output_tokens": 0,
+                "total_tokens": 51,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "commitment": {
+              "model": "local-baseline-commitment-v1",
+              "detector_version": "local-commitment-v1",
+              "duration_ms": 1,
+              "usage": {
+                "input_tokens": 51,
+                "output_tokens": 76,
+                "total_tokens": 127,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "complaint": {
+              "model": "local-baseline-complaint-v1",
+              "detector_version": "local-complaint-v1",
+              "duration_ms": 0,
+              "usage": {
+                "input_tokens": 51,
+                "output_tokens": 0,
+                "total_tokens": 51,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            }
+          },
+          "counts": {
+            "unanswered": {},
+            "commitment": {
+              "duplicates": 0,
+              "tp": 1,
+              "evidence_correct": 1
+            },
+            "complaint": {}
+          }
+        },
+        {
+          "split": "development",
+          "chat": "n-001",
+          "as_of": "2026-09-15T10:35:00+00:00",
+          "duration_seconds": 0.043252,
+          "cost_usd": null,
+          "input_limitations": {
+            "attachments": 0,
+            "unknown_authors": 0,
+            "system_events": 2,
+            "message_count": 12,
+            "context_messages": 0,
+            "missing_settings": false,
+            "unavailable_messages": 0,
+            "history_incomplete": true,
+            "uncertain_revisions": 0
+          },
+          "detectors": {
+            "unanswered": {
+              "model": "local-baseline-unanswered-v1",
+              "detector_version": "local-unanswered-v1",
+              "duration_ms": 2,
+              "usage": {
+                "input_tokens": 90,
+                "output_tokens": 32,
+                "total_tokens": 122,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "commitment": {
+              "model": "local-baseline-commitment-v1",
+              "detector_version": "local-commitment-v1",
+              "duration_ms": 1,
+              "usage": {
+                "input_tokens": 90,
+                "output_tokens": 76,
+                "total_tokens": 166,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "complaint": {
+              "model": "local-baseline-complaint-v1",
+              "detector_version": "local-complaint-v1",
+              "duration_ms": 1,
+              "usage": {
+                "input_tokens": 90,
+                "output_tokens": 0,
+                "total_tokens": 90,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            }
+          },
+          "counts": {
+            "unanswered": {
+              "duplicates": 0,
+              "tp": 1,
+              "evidence_correct": 1,
+              "sla_checked": 1,
+              "sla_errors": 0
+            },
+            "commitment": {
+              "duplicates": 0,
+              "tp": 1,
+              "evidence_correct": 1
+            },
+            "complaint": {}
+          }
+        },
+        {
+          "split": "development",
+          "chat": "n-002",
+          "as_of": "2026-09-15T10:05:00+00:00",
+          "duration_seconds": 0.047074,
+          "cost_usd": null,
+          "input_limitations": {
+            "attachments": 0,
+            "unknown_authors": 0,
+            "system_events": 0,
+            "message_count": 6,
+            "context_messages": 0,
+            "missing_settings": false,
+            "unavailable_messages": 0,
+            "history_incomplete": true,
+            "uncertain_revisions": 0
+          },
+          "detectors": {
+            "unanswered": {
+              "model": "local-baseline-unanswered-v1",
+              "detector_version": "local-unanswered-v1",
+              "duration_ms": 2,
+              "usage": {
+                "input_tokens": 75,
+                "output_tokens": 46,
+                "total_tokens": 122,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "commitment": {
+              "model": "local-baseline-commitment-v1",
+              "detector_version": "local-commitment-v1",
+              "duration_ms": 1,
+              "usage": {
+                "input_tokens": 75,
+                "output_tokens": 76,
+                "total_tokens": 152,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "complaint": {
+              "model": "local-baseline-complaint-v1",
+              "detector_version": "local-complaint-v1",
+              "duration_ms": 1,
+              "usage": {
+                "input_tokens": 75,
+                "output_tokens": 51,
+                "total_tokens": 127,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            }
+          },
+          "counts": {
+            "unanswered": {
+              "duplicates": 0,
+              "tp": 1,
+              "evidence_correct": 1,
+              "sla_checked": 1,
+              "sla_errors": 0
+            },
+            "commitment": {
+              "duplicates": 0,
+              "tp": 1,
+              "evidence_correct": 1
+            },
+            "complaint": {
+              "duplicates": 0,
+              "tp": 1,
+              "evidence_correct": 1
+            }
+          }
+        },
+        {
+          "split": "development",
+          "chat": "n-004",
+          "as_of": "2026-09-15T08:30:00+00:00",
+          "duration_seconds": 0.035653,
+          "cost_usd": null,
+          "input_limitations": {
+            "attachments": 0,
+            "unknown_authors": 0,
+            "system_events": 0,
+            "message_count": 4,
+            "context_messages": 0,
+            "missing_settings": false,
+            "unavailable_messages": 0,
+            "history_incomplete": true,
+            "uncertain_revisions": 0
+          },
+          "detectors": {
+            "unanswered": {
+              "model": "local-baseline-unanswered-v1",
+              "detector_version": "local-unanswered-v1",
+              "duration_ms": 1,
+              "usage": {
+                "input_tokens": 29,
+                "output_tokens": 0,
+                "total_tokens": 29,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "commitment": {
+              "model": "local-baseline-commitment-v1",
+              "detector_version": "local-commitment-v1",
+              "duration_ms": 0,
+              "usage": {
+                "input_tokens": 29,
+                "output_tokens": 55,
+                "total_tokens": 84,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "complaint": {
+              "model": "local-baseline-complaint-v1",
+              "detector_version": "local-complaint-v1",
+              "duration_ms": 0,
+              "usage": {
+                "input_tokens": 29,
+                "output_tokens": 0,
+                "total_tokens": 29,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            }
+          },
+          "counts": {
+            "unanswered": {},
+            "commitment": {},
+            "complaint": {}
+          }
+        },
+        {
+          "split": "development",
+          "chat": "n-005",
+          "as_of": "2026-09-15T09:25:00+00:00",
+          "duration_seconds": 0.028835,
+          "cost_usd": null,
+          "input_limitations": {
+            "attachments": 0,
+            "unknown_authors": 0,
+            "system_events": 1,
+            "message_count": 4,
+            "context_messages": 0,
+            "missing_settings": false,
+            "unavailable_messages": 0,
+            "history_incomplete": true,
+            "uncertain_revisions": 0
+          },
+          "detectors": {
+            "unanswered": {
+              "model": "local-baseline-unanswered-v1",
+              "detector_version": "local-unanswered-v1",
+              "duration_ms": 1,
+              "usage": {
+                "input_tokens": 34,
+                "output_tokens": 40,
+                "total_tokens": 74,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "commitment": {
+              "model": "local-baseline-commitment-v1",
+              "detector_version": "local-commitment-v1",
+              "duration_ms": 0,
+              "usage": {
+                "input_tokens": 34,
+                "output_tokens": 0,
+                "total_tokens": 34,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "complaint": {
+              "model": "local-baseline-complaint-v1",
+              "detector_version": "local-complaint-v1",
+              "duration_ms": 0,
+              "usage": {
+                "input_tokens": 34,
+                "output_tokens": 0,
+                "total_tokens": 34,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            }
+          },
+          "counts": {
+            "unanswered": {
+              "duplicates": 0,
+              "tp": 1,
+              "evidence_correct": 1,
+              "sla_checked": 1,
+              "sla_errors": 0
+            },
+            "commitment": {},
+            "complaint": {}
+          }
+        },
+        {
+          "split": "development",
+          "chat": "n-008",
+          "as_of": "2026-09-15T08:00:00+00:00",
+          "duration_seconds": 0.089559,
+          "cost_usd": null,
+          "input_limitations": {
+            "attachments": 0,
+            "unknown_authors": 0,
+            "system_events": 0,
+            "message_count": 3,
+            "context_messages": 0,
+            "missing_settings": false,
+            "unavailable_messages": 0,
+            "history_incomplete": true,
+            "uncertain_revisions": 0
+          },
+          "detectors": {
+            "unanswered": {
+              "model": "local-baseline-unanswered-v1",
+              "detector_version": "local-unanswered-v1",
+              "duration_ms": 1,
+              "usage": {
+                "input_tokens": 24,
+                "output_tokens": 0,
+                "total_tokens": 24,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "commitment": {
+              "model": "local-baseline-commitment-v1",
+              "detector_version": "local-commitment-v1",
+              "duration_ms": 0,
+              "usage": {
+                "input_tokens": 24,
+                "output_tokens": 18,
+                "total_tokens": 42,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "complaint": {
+              "model": "local-baseline-complaint-v1",
+              "detector_version": "local-complaint-v1",
+              "duration_ms": 0,
+              "usage": {
+                "input_tokens": 24,
+                "output_tokens": 0,
+                "total_tokens": 24,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            }
+          },
+          "counts": {
+            "unanswered": {},
+            "commitment": {
+              "duplicates": 0,
+              "tp": 1,
+              "evidence_correct": 1
+            },
+            "complaint": {}
+          }
+        }
+      ],
+      "synthetic_challenges": {
+        "metrics": {
+          "tp": 1,
+          "fp": 1,
+          "fn": 1,
+          "tn": 2,
+          "precision": 0.5,
+          "recall": 0.5
+        },
+        "cases": [
+          {
+            "case_id": "c-101",
+            "expected_unanswered": true,
+            "actual_unanswered": false,
+            "candidate_count": 0,
+            "reason": "Operational blockage without a question mark.",
+            "cost_usd": null
+          },
+          {
+            "case_id": "c-102",
+            "expected_unanswered": false,
+            "actual_unanswered": true,
+            "candidate_count": 1,
+            "reason": "A concrete scheduled answer resolves a timing question.",
+            "cost_usd": null
+          },
+          {
+            "case_id": "c-103",
+            "expected_unanswered": true,
+            "actual_unanswered": true,
+            "candidate_count": 1,
+            "reason": "Acknowledgement is a first reaction, not resolution.",
+            "cost_usd": null
+          },
+          {
+            "case_id": "c-104",
+            "expected_unanswered": false,
+            "actual_unanswered": false,
+            "candidate_count": 0,
+            "reason": "A neutral statement is not an unanswered request.",
+            "cost_usd": null
+          },
+          {
+            "case_id": "c-105",
+            "expected_unanswered": false,
+            "actual_unanswered": false,
+            "candidate_count": 0,
+            "reason": "A substantive sent-file response resolves the request.",
+            "cost_usd": null
+          }
+        ]
+      },
+      "stable_result_sha256": "894fc9c7c7cb6113b43d0b058f00f8b93cfeb3c44c60096c6899f52c4655dec5",
+      "repeat_verification": {
+        "repeated_stable_result_sha256": "894fc9c7c7cb6113b43d0b058f00f8b93cfeb3c44c60096c6899f52c4655dec5",
+        "matches": true
+      }
+    },
+    {
+      "name": "local-rules-v2",
+      "source_commit": "274538cf7333f3be78e39bcb0ec37227e377051f",
+      "source_sha256": "5731750d0cdc42b52e98cce0ef6b6ee08bebbd1a9890e5820bfba2f27e1baf75",
+      "prompt_version": "unanswered-rules-v2",
+      "detector_version": "local-unanswered-v2",
+      "model_id": "local-baseline-unanswered-v1",
+      "model_params": {
+        "strategy": "rules",
+        "version": "local-unanswered-v2"
+      },
+      "metrics": {
+        "unanswered": {
+          "duplicates": 0,
+          "tp": 4,
+          "evidence_correct": 4,
+          "sla_checked": 4,
+          "sla_errors": 0,
+          "fp": 0,
+          "fn": 0,
+          "invalid": 0,
+          "precision": 1.0,
+          "recall": 1.0
+        },
+        "commitment": {
+          "duplicates": 0,
+          "tp": 5,
+          "evidence_correct": 5,
+          "fp": 0,
+          "fn": 0,
+          "sla_checked": 0,
+          "sla_errors": 0,
+          "invalid": 0,
+          "precision": 1.0,
+          "recall": 1.0
+        },
+        "complaint": {
+          "duplicates": 0,
+          "tp": 1,
+          "evidence_correct": 1,
+          "fp": 0,
+          "fn": 0,
+          "sla_checked": 0,
+          "sla_errors": 0,
+          "invalid": 0,
+          "precision": 1.0,
+          "recall": 1.0
+        }
+      },
+      "slices": [
+        {
+          "split": "development",
+          "chat": "n-001",
+          "as_of": "2026-09-14T06:30:00+00:00",
+          "duration_seconds": 0.058144,
+          "cost_usd": null,
+          "input_limitations": {
+            "attachments": 0,
+            "unknown_authors": 0,
+            "system_events": 0,
+            "message_count": 3,
+            "context_messages": 0,
+            "missing_settings": false,
+            "unavailable_messages": 0,
+            "history_incomplete": true,
+            "uncertain_revisions": 0
+          },
+          "detectors": {
+            "unanswered": {
+              "model": "local-baseline-unanswered-v1",
+              "detector_version": "local-unanswered-v2",
+              "duration_ms": 2,
+              "usage": {
+                "input_tokens": 28,
+                "output_tokens": 39,
+                "total_tokens": 67,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "commitment": {
+              "model": "local-baseline-commitment-v1",
+              "detector_version": "local-commitment-v1",
+              "duration_ms": 1,
+              "usage": {
+                "input_tokens": 28,
+                "output_tokens": 18,
+                "total_tokens": 46,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "complaint": {
+              "model": "local-baseline-complaint-v1",
+              "detector_version": "local-complaint-v1",
+              "duration_ms": 0,
+              "usage": {
+                "input_tokens": 28,
+                "output_tokens": 0,
+                "total_tokens": 28,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            }
+          },
+          "counts": {
+            "unanswered": {
+              "duplicates": 0,
+              "tp": 1,
+              "evidence_correct": 1,
+              "sla_checked": 1,
+              "sla_errors": 0
+            },
+            "commitment": {
+              "duplicates": 0,
+              "tp": 1,
+              "evidence_correct": 1
+            },
+            "complaint": {}
+          }
+        },
+        {
+          "split": "development",
+          "chat": "n-001",
+          "as_of": "2026-09-14T09:15:00+00:00",
+          "duration_seconds": 0.042133,
+          "cost_usd": null,
+          "input_limitations": {
+            "attachments": 0,
+            "unknown_authors": 0,
+            "system_events": 0,
+            "message_count": 6,
+            "context_messages": 0,
+            "missing_settings": false,
+            "unavailable_messages": 0,
+            "history_incomplete": true,
+            "uncertain_revisions": 0
+          },
+          "detectors": {
+            "unanswered": {
+              "model": "local-baseline-unanswered-v1",
+              "detector_version": "local-unanswered-v2",
+              "duration_ms": 1,
+              "usage": {
+                "input_tokens": 51,
+                "output_tokens": 0,
+                "total_tokens": 51,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "commitment": {
+              "model": "local-baseline-commitment-v1",
+              "detector_version": "local-commitment-v1",
+              "duration_ms": 0,
+              "usage": {
+                "input_tokens": 51,
+                "output_tokens": 76,
+                "total_tokens": 127,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "complaint": {
+              "model": "local-baseline-complaint-v1",
+              "detector_version": "local-complaint-v1",
+              "duration_ms": 1,
+              "usage": {
+                "input_tokens": 51,
+                "output_tokens": 0,
+                "total_tokens": 51,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            }
+          },
+          "counts": {
+            "unanswered": {},
+            "commitment": {
+              "duplicates": 0,
+              "tp": 1,
+              "evidence_correct": 1
+            },
+            "complaint": {}
+          }
+        },
+        {
+          "split": "development",
+          "chat": "n-001",
+          "as_of": "2026-09-15T10:35:00+00:00",
+          "duration_seconds": 0.045235,
+          "cost_usd": null,
+          "input_limitations": {
+            "attachments": 0,
+            "unknown_authors": 0,
+            "system_events": 2,
+            "message_count": 12,
+            "context_messages": 0,
+            "missing_settings": false,
+            "unavailable_messages": 0,
+            "history_incomplete": true,
+            "uncertain_revisions": 0
+          },
+          "detectors": {
+            "unanswered": {
+              "model": "local-baseline-unanswered-v1",
+              "detector_version": "local-unanswered-v2",
+              "duration_ms": 2,
+              "usage": {
+                "input_tokens": 90,
+                "output_tokens": 32,
+                "total_tokens": 122,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "commitment": {
+              "model": "local-baseline-commitment-v1",
+              "detector_version": "local-commitment-v1",
+              "duration_ms": 1,
+              "usage": {
+                "input_tokens": 90,
+                "output_tokens": 76,
+                "total_tokens": 166,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "complaint": {
+              "model": "local-baseline-complaint-v1",
+              "detector_version": "local-complaint-v1",
+              "duration_ms": 1,
+              "usage": {
+                "input_tokens": 90,
+                "output_tokens": 0,
+                "total_tokens": 90,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            }
+          },
+          "counts": {
+            "unanswered": {
+              "duplicates": 0,
+              "tp": 1,
+              "evidence_correct": 1,
+              "sla_checked": 1,
+              "sla_errors": 0
+            },
+            "commitment": {
+              "duplicates": 0,
+              "tp": 1,
+              "evidence_correct": 1
+            },
+            "complaint": {}
+          }
+        },
+        {
+          "split": "development",
+          "chat": "n-002",
+          "as_of": "2026-09-15T10:05:00+00:00",
+          "duration_seconds": 0.046178,
+          "cost_usd": null,
+          "input_limitations": {
+            "attachments": 0,
+            "unknown_authors": 0,
+            "system_events": 0,
+            "message_count": 6,
+            "context_messages": 0,
+            "missing_settings": false,
+            "unavailable_messages": 0,
+            "history_incomplete": true,
+            "uncertain_revisions": 0
+          },
+          "detectors": {
+            "unanswered": {
+              "model": "local-baseline-unanswered-v1",
+              "detector_version": "local-unanswered-v2",
+              "duration_ms": 1,
+              "usage": {
+                "input_tokens": 75,
+                "output_tokens": 46,
+                "total_tokens": 122,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "commitment": {
+              "model": "local-baseline-commitment-v1",
+              "detector_version": "local-commitment-v1",
+              "duration_ms": 1,
+              "usage": {
+                "input_tokens": 75,
+                "output_tokens": 76,
+                "total_tokens": 152,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "complaint": {
+              "model": "local-baseline-complaint-v1",
+              "detector_version": "local-complaint-v1",
+              "duration_ms": 1,
+              "usage": {
+                "input_tokens": 75,
+                "output_tokens": 51,
+                "total_tokens": 127,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            }
+          },
+          "counts": {
+            "unanswered": {
+              "duplicates": 0,
+              "tp": 1,
+              "evidence_correct": 1,
+              "sla_checked": 1,
+              "sla_errors": 0
+            },
+            "commitment": {
+              "duplicates": 0,
+              "tp": 1,
+              "evidence_correct": 1
+            },
+            "complaint": {
+              "duplicates": 0,
+              "tp": 1,
+              "evidence_correct": 1
+            }
+          }
+        },
+        {
+          "split": "development",
+          "chat": "n-004",
+          "as_of": "2026-09-15T08:30:00+00:00",
+          "duration_seconds": 0.036214,
+          "cost_usd": null,
+          "input_limitations": {
+            "attachments": 0,
+            "unknown_authors": 0,
+            "system_events": 0,
+            "message_count": 4,
+            "context_messages": 0,
+            "missing_settings": false,
+            "unavailable_messages": 0,
+            "history_incomplete": true,
+            "uncertain_revisions": 0
+          },
+          "detectors": {
+            "unanswered": {
+              "model": "local-baseline-unanswered-v1",
+              "detector_version": "local-unanswered-v2",
+              "duration_ms": 1,
+              "usage": {
+                "input_tokens": 29,
+                "output_tokens": 0,
+                "total_tokens": 29,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "commitment": {
+              "model": "local-baseline-commitment-v1",
+              "detector_version": "local-commitment-v1",
+              "duration_ms": 0,
+              "usage": {
+                "input_tokens": 29,
+                "output_tokens": 55,
+                "total_tokens": 84,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "complaint": {
+              "model": "local-baseline-complaint-v1",
+              "detector_version": "local-complaint-v1",
+              "duration_ms": 0,
+              "usage": {
+                "input_tokens": 29,
+                "output_tokens": 0,
+                "total_tokens": 29,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            }
+          },
+          "counts": {
+            "unanswered": {},
+            "commitment": {},
+            "complaint": {}
+          }
+        },
+        {
+          "split": "development",
+          "chat": "n-005",
+          "as_of": "2026-09-15T09:25:00+00:00",
+          "duration_seconds": 0.025711,
+          "cost_usd": null,
+          "input_limitations": {
+            "attachments": 0,
+            "unknown_authors": 0,
+            "system_events": 1,
+            "message_count": 4,
+            "context_messages": 0,
+            "missing_settings": false,
+            "unavailable_messages": 0,
+            "history_incomplete": true,
+            "uncertain_revisions": 0
+          },
+          "detectors": {
+            "unanswered": {
+              "model": "local-baseline-unanswered-v1",
+              "detector_version": "local-unanswered-v2",
+              "duration_ms": 2,
+              "usage": {
+                "input_tokens": 34,
+                "output_tokens": 40,
+                "total_tokens": 74,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "commitment": {
+              "model": "local-baseline-commitment-v1",
+              "detector_version": "local-commitment-v1",
+              "duration_ms": 0,
+              "usage": {
+                "input_tokens": 34,
+                "output_tokens": 0,
+                "total_tokens": 34,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "complaint": {
+              "model": "local-baseline-complaint-v1",
+              "detector_version": "local-complaint-v1",
+              "duration_ms": 0,
+              "usage": {
+                "input_tokens": 34,
+                "output_tokens": 0,
+                "total_tokens": 34,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            }
+          },
+          "counts": {
+            "unanswered": {
+              "duplicates": 0,
+              "tp": 1,
+              "evidence_correct": 1,
+              "sla_checked": 1,
+              "sla_errors": 0
+            },
+            "commitment": {},
+            "complaint": {}
+          }
+        },
+        {
+          "split": "development",
+          "chat": "n-008",
+          "as_of": "2026-09-15T08:00:00+00:00",
+          "duration_seconds": 0.086742,
+          "cost_usd": null,
+          "input_limitations": {
+            "attachments": 0,
+            "unknown_authors": 0,
+            "system_events": 0,
+            "message_count": 3,
+            "context_messages": 0,
+            "missing_settings": false,
+            "unavailable_messages": 0,
+            "history_incomplete": true,
+            "uncertain_revisions": 0
+          },
+          "detectors": {
+            "unanswered": {
+              "model": "local-baseline-unanswered-v1",
+              "detector_version": "local-unanswered-v2",
+              "duration_ms": 1,
+              "usage": {
+                "input_tokens": 24,
+                "output_tokens": 0,
+                "total_tokens": 24,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "commitment": {
+              "model": "local-baseline-commitment-v1",
+              "detector_version": "local-commitment-v1",
+              "duration_ms": 0,
+              "usage": {
+                "input_tokens": 24,
+                "output_tokens": 18,
+                "total_tokens": 42,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "complaint": {
+              "model": "local-baseline-complaint-v1",
+              "detector_version": "local-complaint-v1",
+              "duration_ms": 0,
+              "usage": {
+                "input_tokens": 24,
+                "output_tokens": 0,
+                "total_tokens": 24,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            }
+          },
+          "counts": {
+            "unanswered": {},
+            "commitment": {
+              "duplicates": 0,
+              "tp": 1,
+              "evidence_correct": 1
+            },
+            "complaint": {}
+          }
+        }
+      ],
+      "synthetic_challenges": {
+        "metrics": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 1,
+          "tn": 3,
+          "precision": 1.0,
+          "recall": 0.5
+        },
+        "cases": [
+          {
+            "case_id": "c-101",
+            "expected_unanswered": true,
+            "actual_unanswered": false,
+            "candidate_count": 0,
+            "reason": "Operational blockage without a question mark.",
+            "cost_usd": null
+          },
+          {
+            "case_id": "c-102",
+            "expected_unanswered": false,
+            "actual_unanswered": false,
+            "candidate_count": 0,
+            "reason": "A concrete scheduled answer resolves a timing question.",
+            "cost_usd": null
+          },
+          {
+            "case_id": "c-103",
+            "expected_unanswered": true,
+            "actual_unanswered": true,
+            "candidate_count": 1,
+            "reason": "Acknowledgement is a first reaction, not resolution.",
+            "cost_usd": null
+          },
+          {
+            "case_id": "c-104",
+            "expected_unanswered": false,
+            "actual_unanswered": false,
+            "candidate_count": 0,
+            "reason": "A neutral statement is not an unanswered request.",
+            "cost_usd": null
+          },
+          {
+            "case_id": "c-105",
+            "expected_unanswered": false,
+            "actual_unanswered": false,
+            "candidate_count": 0,
+            "reason": "A substantive sent-file response resolves the request.",
+            "cost_usd": null
+          }
+        ]
+      },
+      "stable_result_sha256": "413368b9b02995be9a77709e21685ae091d5934497f6aa5d052b68cf5b0501e2",
+      "repeat_verification": {
+        "repeated_stable_result_sha256": "413368b9b02995be9a77709e21685ae091d5934497f6aa5d052b68cf5b0501e2",
+        "matches": true
+      }
+    },
+    {
+      "name": "local-rules-v3",
+      "source_commit": "3dce17e1173ffc82c1fef586408a4767959ab75f",
+      "source_sha256": "5da60da82a10c126a2b79e60b6261ce530d107d22b5667ae9f98b7233ba21df4",
+      "prompt_version": "unanswered-rules-v3",
+      "detector_version": "local-unanswered-v3",
+      "model_id": "local-baseline-unanswered-v1",
+      "model_params": {
+        "strategy": "rules",
+        "version": "local-unanswered-v3"
+      },
+      "metrics": {
+        "unanswered": {
+          "duplicates": 0,
+          "tp": 4,
+          "evidence_correct": 4,
+          "sla_checked": 4,
+          "sla_errors": 0,
+          "fp": 0,
+          "fn": 0,
+          "invalid": 0,
+          "precision": 1.0,
+          "recall": 1.0
+        },
+        "commitment": {
+          "duplicates": 0,
+          "tp": 5,
+          "evidence_correct": 5,
+          "fp": 0,
+          "fn": 0,
+          "sla_checked": 0,
+          "sla_errors": 0,
+          "invalid": 0,
+          "precision": 1.0,
+          "recall": 1.0
+        },
+        "complaint": {
+          "duplicates": 0,
+          "tp": 1,
+          "evidence_correct": 1,
+          "fp": 0,
+          "fn": 0,
+          "sla_checked": 0,
+          "sla_errors": 0,
+          "invalid": 0,
+          "precision": 1.0,
+          "recall": 1.0
+        }
+      },
+      "slices": [
+        {
+          "split": "development",
+          "chat": "n-001",
+          "as_of": "2026-09-14T06:30:00+00:00",
+          "duration_seconds": 0.053443,
+          "cost_usd": null,
+          "input_limitations": {
+            "attachments": 0,
+            "unknown_authors": 0,
+            "system_events": 0,
+            "message_count": 3,
+            "context_messages": 0,
+            "missing_settings": false,
+            "unavailable_messages": 0,
+            "history_incomplete": true,
+            "uncertain_revisions": 0
+          },
+          "detectors": {
+            "unanswered": {
+              "model": "local-baseline-unanswered-v1",
+              "detector_version": "local-unanswered-v3",
+              "duration_ms": 2,
+              "usage": {
+                "input_tokens": 28,
+                "output_tokens": 39,
+                "total_tokens": 67,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "commitment": {
+              "model": "local-baseline-commitment-v1",
+              "detector_version": "local-commitment-v1",
+              "duration_ms": 1,
+              "usage": {
+                "input_tokens": 28,
+                "output_tokens": 18,
+                "total_tokens": 46,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "complaint": {
+              "model": "local-baseline-complaint-v1",
+              "detector_version": "local-complaint-v1",
+              "duration_ms": 0,
+              "usage": {
+                "input_tokens": 28,
+                "output_tokens": 0,
+                "total_tokens": 28,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            }
+          },
+          "counts": {
+            "unanswered": {
+              "duplicates": 0,
+              "tp": 1,
+              "evidence_correct": 1,
+              "sla_checked": 1,
+              "sla_errors": 0
+            },
+            "commitment": {
+              "duplicates": 0,
+              "tp": 1,
+              "evidence_correct": 1
+            },
+            "complaint": {}
+          }
+        },
+        {
+          "split": "development",
+          "chat": "n-001",
+          "as_of": "2026-09-14T09:15:00+00:00",
+          "duration_seconds": 0.043154,
+          "cost_usd": null,
+          "input_limitations": {
+            "attachments": 0,
+            "unknown_authors": 0,
+            "system_events": 0,
+            "message_count": 6,
+            "context_messages": 0,
+            "missing_settings": false,
+            "unavailable_messages": 0,
+            "history_incomplete": true,
+            "uncertain_revisions": 0
+          },
+          "detectors": {
+            "unanswered": {
+              "model": "local-baseline-unanswered-v1",
+              "detector_version": "local-unanswered-v3",
+              "duration_ms": 2,
+              "usage": {
+                "input_tokens": 51,
+                "output_tokens": 0,
+                "total_tokens": 51,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "commitment": {
+              "model": "local-baseline-commitment-v1",
+              "detector_version": "local-commitment-v1",
+              "duration_ms": 2,
+              "usage": {
+                "input_tokens": 51,
+                "output_tokens": 76,
+                "total_tokens": 127,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "complaint": {
+              "model": "local-baseline-complaint-v1",
+              "detector_version": "local-complaint-v1",
+              "duration_ms": 1,
+              "usage": {
+                "input_tokens": 51,
+                "output_tokens": 0,
+                "total_tokens": 51,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            }
+          },
+          "counts": {
+            "unanswered": {},
+            "commitment": {
+              "duplicates": 0,
+              "tp": 1,
+              "evidence_correct": 1
+            },
+            "complaint": {}
+          }
+        },
+        {
+          "split": "development",
+          "chat": "n-001",
+          "as_of": "2026-09-15T10:35:00+00:00",
+          "duration_seconds": 0.044978,
+          "cost_usd": null,
+          "input_limitations": {
+            "attachments": 0,
+            "unknown_authors": 0,
+            "system_events": 2,
+            "message_count": 12,
+            "context_messages": 0,
+            "missing_settings": false,
+            "unavailable_messages": 0,
+            "history_incomplete": true,
+            "uncertain_revisions": 0
+          },
+          "detectors": {
+            "unanswered": {
+              "model": "local-baseline-unanswered-v1",
+              "detector_version": "local-unanswered-v3",
+              "duration_ms": 2,
+              "usage": {
+                "input_tokens": 90,
+                "output_tokens": 32,
+                "total_tokens": 122,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "commitment": {
+              "model": "local-baseline-commitment-v1",
+              "detector_version": "local-commitment-v1",
+              "duration_ms": 1,
+              "usage": {
+                "input_tokens": 90,
+                "output_tokens": 76,
+                "total_tokens": 166,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "complaint": {
+              "model": "local-baseline-complaint-v1",
+              "detector_version": "local-complaint-v1",
+              "duration_ms": 1,
+              "usage": {
+                "input_tokens": 90,
+                "output_tokens": 0,
+                "total_tokens": 90,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            }
+          },
+          "counts": {
+            "unanswered": {
+              "duplicates": 0,
+              "tp": 1,
+              "evidence_correct": 1,
+              "sla_checked": 1,
+              "sla_errors": 0
+            },
+            "commitment": {
+              "duplicates": 0,
+              "tp": 1,
+              "evidence_correct": 1
+            },
+            "complaint": {}
+          }
+        },
+        {
+          "split": "development",
+          "chat": "n-002",
+          "as_of": "2026-09-15T10:05:00+00:00",
+          "duration_seconds": 0.045325,
+          "cost_usd": null,
+          "input_limitations": {
+            "attachments": 0,
+            "unknown_authors": 0,
+            "system_events": 0,
+            "message_count": 6,
+            "context_messages": 0,
+            "missing_settings": false,
+            "unavailable_messages": 0,
+            "history_incomplete": true,
+            "uncertain_revisions": 0
+          },
+          "detectors": {
+            "unanswered": {
+              "model": "local-baseline-unanswered-v1",
+              "detector_version": "local-unanswered-v3",
+              "duration_ms": 2,
+              "usage": {
+                "input_tokens": 75,
+                "output_tokens": 46,
+                "total_tokens": 122,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "commitment": {
+              "model": "local-baseline-commitment-v1",
+              "detector_version": "local-commitment-v1",
+              "duration_ms": 1,
+              "usage": {
+                "input_tokens": 75,
+                "output_tokens": 76,
+                "total_tokens": 152,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "complaint": {
+              "model": "local-baseline-complaint-v1",
+              "detector_version": "local-complaint-v1",
+              "duration_ms": 1,
+              "usage": {
+                "input_tokens": 75,
+                "output_tokens": 51,
+                "total_tokens": 127,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            }
+          },
+          "counts": {
+            "unanswered": {
+              "duplicates": 0,
+              "tp": 1,
+              "evidence_correct": 1,
+              "sla_checked": 1,
+              "sla_errors": 0
+            },
+            "commitment": {
+              "duplicates": 0,
+              "tp": 1,
+              "evidence_correct": 1
+            },
+            "complaint": {
+              "duplicates": 0,
+              "tp": 1,
+              "evidence_correct": 1
+            }
+          }
+        },
+        {
+          "split": "development",
+          "chat": "n-004",
+          "as_of": "2026-09-15T08:30:00+00:00",
+          "duration_seconds": 0.037875,
+          "cost_usd": null,
+          "input_limitations": {
+            "attachments": 0,
+            "unknown_authors": 0,
+            "system_events": 0,
+            "message_count": 4,
+            "context_messages": 0,
+            "missing_settings": false,
+            "unavailable_messages": 0,
+            "history_incomplete": true,
+            "uncertain_revisions": 0
+          },
+          "detectors": {
+            "unanswered": {
+              "model": "local-baseline-unanswered-v1",
+              "detector_version": "local-unanswered-v3",
+              "duration_ms": 1,
+              "usage": {
+                "input_tokens": 29,
+                "output_tokens": 0,
+                "total_tokens": 29,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "commitment": {
+              "model": "local-baseline-commitment-v1",
+              "detector_version": "local-commitment-v1",
+              "duration_ms": 1,
+              "usage": {
+                "input_tokens": 29,
+                "output_tokens": 55,
+                "total_tokens": 84,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "complaint": {
+              "model": "local-baseline-complaint-v1",
+              "detector_version": "local-complaint-v1",
+              "duration_ms": 1,
+              "usage": {
+                "input_tokens": 29,
+                "output_tokens": 0,
+                "total_tokens": 29,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            }
+          },
+          "counts": {
+            "unanswered": {},
+            "commitment": {},
+            "complaint": {}
+          }
+        },
+        {
+          "split": "development",
+          "chat": "n-005",
+          "as_of": "2026-09-15T09:25:00+00:00",
+          "duration_seconds": 0.030801,
+          "cost_usd": null,
+          "input_limitations": {
+            "attachments": 0,
+            "unknown_authors": 0,
+            "system_events": 1,
+            "message_count": 4,
+            "context_messages": 0,
+            "missing_settings": false,
+            "unavailable_messages": 0,
+            "history_incomplete": true,
+            "uncertain_revisions": 0
+          },
+          "detectors": {
+            "unanswered": {
+              "model": "local-baseline-unanswered-v1",
+              "detector_version": "local-unanswered-v3",
+              "duration_ms": 1,
+              "usage": {
+                "input_tokens": 34,
+                "output_tokens": 40,
+                "total_tokens": 74,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "commitment": {
+              "model": "local-baseline-commitment-v1",
+              "detector_version": "local-commitment-v1",
+              "duration_ms": 0,
+              "usage": {
+                "input_tokens": 34,
+                "output_tokens": 0,
+                "total_tokens": 34,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "complaint": {
+              "model": "local-baseline-complaint-v1",
+              "detector_version": "local-complaint-v1",
+              "duration_ms": 1,
+              "usage": {
+                "input_tokens": 34,
+                "output_tokens": 0,
+                "total_tokens": 34,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            }
+          },
+          "counts": {
+            "unanswered": {
+              "duplicates": 0,
+              "tp": 1,
+              "evidence_correct": 1,
+              "sla_checked": 1,
+              "sla_errors": 0
+            },
+            "commitment": {},
+            "complaint": {}
+          }
+        },
+        {
+          "split": "development",
+          "chat": "n-008",
+          "as_of": "2026-09-15T08:00:00+00:00",
+          "duration_seconds": 0.084761,
+          "cost_usd": null,
+          "input_limitations": {
+            "attachments": 0,
+            "unknown_authors": 0,
+            "system_events": 0,
+            "message_count": 3,
+            "context_messages": 0,
+            "missing_settings": false,
+            "unavailable_messages": 0,
+            "history_incomplete": true,
+            "uncertain_revisions": 0
+          },
+          "detectors": {
+            "unanswered": {
+              "model": "local-baseline-unanswered-v1",
+              "detector_version": "local-unanswered-v3",
+              "duration_ms": 1,
+              "usage": {
+                "input_tokens": 24,
+                "output_tokens": 0,
+                "total_tokens": 24,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "commitment": {
+              "model": "local-baseline-commitment-v1",
+              "detector_version": "local-commitment-v1",
+              "duration_ms": 0,
+              "usage": {
+                "input_tokens": 24,
+                "output_tokens": 18,
+                "total_tokens": 42,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            },
+            "complaint": {
+              "model": "local-baseline-complaint-v1",
+              "detector_version": "local-complaint-v1",
+              "duration_ms": 0,
+              "usage": {
+                "input_tokens": 24,
+                "output_tokens": 0,
+                "total_tokens": 24,
+                "cost_usd": null,
+                "currency": "USD",
+                "pricing_version": null
+              }
+            }
+          },
+          "counts": {
+            "unanswered": {},
+            "commitment": {
+              "duplicates": 0,
+              "tp": 1,
+              "evidence_correct": 1
+            },
+            "complaint": {}
+          }
+        }
+      ],
+      "synthetic_challenges": {
+        "metrics": {
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "tn": 3,
+          "precision": 1.0,
+          "recall": 1.0
+        },
+        "cases": [
+          {
+            "case_id": "c-101",
+            "expected_unanswered": true,
+            "actual_unanswered": true,
+            "candidate_count": 1,
+            "reason": "Operational blockage without a question mark.",
+            "cost_usd": null
+          },
+          {
+            "case_id": "c-102",
+            "expected_unanswered": false,
+            "actual_unanswered": false,
+            "candidate_count": 0,
+            "reason": "A concrete scheduled answer resolves a timing question.",
+            "cost_usd": null
+          },
+          {
+            "case_id": "c-103",
+            "expected_unanswered": true,
+            "actual_unanswered": true,
+            "candidate_count": 1,
+            "reason": "Acknowledgement is a first reaction, not resolution.",
+            "cost_usd": null
+          },
+          {
+            "case_id": "c-104",
+            "expected_unanswered": false,
+            "actual_unanswered": false,
+            "candidate_count": 0,
+            "reason": "A neutral statement is not an unanswered request.",
+            "cost_usd": null
+          },
+          {
+            "case_id": "c-105",
+            "expected_unanswered": false,
+            "actual_unanswered": false,
+            "candidate_count": 0,
+            "reason": "A substantive sent-file response resolves the request.",
+            "cost_usd": null
+          }
+        ]
+      },
+      "stable_result_sha256": "6f91e37802a9717284ca106e8986ca62df5de20472f338cc7f4ba41ef1cb156c",
+      "repeat_verification": {
+        "repeated_stable_result_sha256": "6f91e37802a9717284ca106e8986ca62df5de20472f338cc7f4ba41ef1cb156c",
+        "matches": true
+      }
+    }
+  ]
+}
