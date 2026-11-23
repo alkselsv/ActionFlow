@@ -1,3 +1,7 @@
+param(
+    [switch]$DiscoverChat
+)
+
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
@@ -47,6 +51,36 @@ try {
     }
     if (-not $me.ok) {
         throw 'Telegram getMe returned ok=false.'
+    }
+
+    if ($DiscoverChat) {
+        try {
+            $updates = Invoke-RestMethod -Uri "$base/getUpdates?timeout=0&limit=100" -TimeoutSec 20
+        } catch {
+            throw 'Telegram getUpdates failed. Check the token and network; the token is not printed.'
+        }
+        if (-not $updates.ok) {
+            throw 'Telegram getUpdates returned ok=false.'
+        }
+        $chats = @()
+        foreach ($update in @($updates.result)) {
+            foreach ($key in @('message', 'edited_message', 'channel_post')) {
+                $message = $update.$key
+                if ($message -and $message.chat) {
+                    $chats += [pscustomobject]@{
+                        id = $message.chat.id
+                        title = $message.chat.title
+                        type = $message.chat.type
+                    }
+                }
+            }
+        }
+        $chats = @($chats | Sort-Object id -Unique)
+        if (-not $chats) {
+            throw 'No group updates found. Add the bot to the test group, send a synthetic message, then retry -DiscoverChat.'
+        }
+        $chats | ConvertTo-Json -Depth 3
+        return
     }
 
     $chatId = $env:TELEGRAM_TEST_CHAT_ID
