@@ -40,6 +40,16 @@ export type TelegramConnection = {
   connected_at: string;
   last_event_at: string | null;
   last_error: string | null;
+  last_observed_at: string | null;
+  last_reconciled_at: string | null;
+  last_polled_at: string | null;
+  queue_caught_up_at: string | null;
+  polling_error: string | null;
+  polling_failures: number;
+  retry_at: string | null;
+  polling_delayed: boolean;
+  completeness: "unknown";
+  gaps: { reason: string; start_at: string; end_at: string | null }[];
 };
 
 export type TelegramStatus = {

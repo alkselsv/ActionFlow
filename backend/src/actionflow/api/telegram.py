@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import HTTPException
@@ -8,9 +8,15 @@ from sqlalchemy.exc import IntegrityError
 
 from actionflow.api.project_settings import require_project
 from actionflow.config import Settings
-from actionflow.persistence.database import new_id, utc_now
+from actionflow.persistence.database import as_utc, new_id, utc_now
 from actionflow.persistence.project_settings import Chat
-from actionflow.persistence.telegram import TelegramConnection
+from actionflow.persistence.telegram import (
+    TelegramBotState,
+    TelegramConnection,
+    TelegramGap,
+)
+from actionflow.telegram_client import configured_bot_id
+from actionflow.telegram_recovery import RETENTION, close_gap, open_gap
 
 ChatId = Annotated[
     str,
@@ -39,7 +45,47 @@ def _iso(value: datetime | None):
     return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
 
 
-def connection_result(connection: TelegramConnection, chat: Chat):
+def connection_result(
+    db, connection: TelegramConnection, chat: Chat, settings: Settings
+):
+    bot_id = configured_bot_id(settings.telegram_bot_token)
+    state = (
+        db.get(TelegramBotState, bot_id)
+        if bot_id
+        else db.scalar(
+            select(TelegramBotState)
+            .order_by(TelegramBotState.updated_at.desc(), TelegramBotState.bot_id)
+            .limit(1)
+        )
+    )
+    now = utc_now()
+    last_poll = as_utc(state.last_polled_at) if state else None
+    caught_up = as_utc(state.last_caught_up_at) if state else None
+    gaps = [
+        {
+            "reason": gap.reason,
+            "start_at": _iso(gap.start_at),
+            "end_at": _iso(gap.end_at),
+        }
+        for gap in db.scalars(
+            select(TelegramGap)
+            .where(TelegramGap.chat_id == connection.chat_id)
+            .order_by(TelegramGap.start_at.desc(), TelegramGap.id.desc())
+            .limit(50)
+        )
+    ]
+    if connection.status != "disconnected":
+        connected = as_utc(connection.connected_at)
+        start = max(caught_up or connected, connected)
+        if now - start > RETENTION:
+            gaps.insert(
+                0,
+                {
+                    "reason": "retention_expired",
+                    "start_at": _iso(start),
+                    "end_at": _iso(now - RETENTION),
+                },
+            )
     return {
         "chat_id": chat.external_id,
         "name": chat.name,
@@ -48,6 +94,20 @@ def connection_result(connection: TelegramConnection, chat: Chat):
         "connected_at": _iso(connection.connected_at),
         "last_event_at": _iso(connection.last_event_at),
         "last_error": connection.last_error,
+        "last_observed_at": _iso(connection.last_observed_at),
+        "last_reconciled_at": _iso(connection.last_reconciled_at),
+        "last_polled_at": _iso(last_poll),
+        "queue_caught_up_at": _iso(caught_up),
+        "polling_error": state.last_error if state else None,
+        "polling_failures": state.failures if state else 0,
+        "retry_at": _iso(state.retry_at) if state else None,
+        "polling_delayed": last_poll is None
+        or now - last_poll
+        > timedelta(
+            seconds=settings.telegram_poll_timeout_seconds + 30,
+        ),
+        "completeness": "unknown",
+        "gaps": gaps,
     }
 
 
@@ -58,7 +118,7 @@ def register_telegram_routes(projects, Db, origin, settings: Settings):
         chat = db.scalar(select(Chat).where(Chat.project_id == project_id))
         connection = db.get(TelegramConnection, chat.id) if chat else None
         return {
-            "connection": connection_result(connection, chat)
+            "connection": connection_result(db, connection, chat, settings)
             if connection and chat
             else None,
             "bot_configured": bool(settings.telegram_bot_token),
@@ -107,16 +167,17 @@ def register_telegram_routes(projects, Db, origin, settings: Settings):
                     updated_at=now,
                 )
                 db.add(connection)
-            else:
+            elif connection.status == "disconnected":
                 connection.status = "active"
                 connection.updated_at = now
                 connection.last_error = None
+                close_gap(db, connection, "disconnected", now)
             db.commit()
         except IntegrityError:
             db.rollback()
             raise HTTPException(409, "Чат уже связан с другим проектом") from None
         return {
-            "connection": connection_result(connection, chat),
+            "connection": connection_result(db, connection, chat, settings),
             "bot_configured": bool(settings.telegram_bot_token),
         }
 
@@ -130,11 +191,14 @@ def register_telegram_routes(projects, Db, origin, settings: Settings):
         connection = db.get(TelegramConnection, chat.id) if chat else None
         if connection is None:
             raise HTTPException(404, "Telegram-чат не подключён")
+        now = utc_now()
+        if connection.status != "disconnected":
+            open_gap(db, connection, "disconnected", now)
         connection.status = "disconnected"
-        connection.updated_at = utc_now()
+        connection.updated_at = now
         connection.last_error = None
         db.commit()
         return {
-            "connection": connection_result(connection, chat),
+            "connection": connection_result(db, connection, chat, settings),
             "bot_configured": bool(settings.telegram_bot_token),
         }

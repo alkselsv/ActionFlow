@@ -7,8 +7,10 @@ all accepted events have been written, so a failed commit is retried instead of
 acknowledged.
 """
 
+import json
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from hashlib import sha256
 from typing import Any
 
 from sqlalchemy import select
@@ -21,7 +23,12 @@ from actionflow.persistence.project_settings import (
     MessageRevision,
     Participant,
 )
-from actionflow.persistence.telegram import TelegramBotState, TelegramConnection
+from actionflow.persistence.telegram import (
+    TelegramBotState,
+    TelegramConnection,
+    TelegramUpdateReceipt,
+)
+from actionflow.telegram_recovery import RETENTION, close_gap, open_gap
 
 ALLOWED_UPDATES = ("message", "edited_message", "my_chat_member")
 SOURCE_KIND = "telegram_bot"
@@ -140,7 +147,7 @@ def _timestamp(value: Any) -> datetime | None:
         return None
     try:
         return datetime.fromtimestamp(seconds, UTC)
-    except (OverflowError, OSError, ValueError):
+    except OverflowError, OSError, ValueError:
         return None
 
 
@@ -364,15 +371,22 @@ def ingest_updates(
         state = TelegramBotState(bot_id=bot_id, updated_at=now)
         db.add(state)
     previous_update_id = state.last_update_id
+    if state.last_update_at is None or now - as_utc(state.last_update_at) >= RETENTION:
+        previous_update_id = None
     maximum_update_id = previous_update_id
-    seen_update_ids = set()
+    seen = set()
 
     if updates is None:
         updates = []
     if not isinstance(updates, (list, tuple)):
         raise TypeError("updates must be a list")
 
-    for raw in updates:
+    for raw in sorted(
+        updates,
+        key=lambda item: (
+            _integer(item.get("update_id")) or 0 if isinstance(item, dict) else 0
+        ),
+    ):
         report.received += 1
         if not isinstance(raw, dict):
             report.reject("malformed_update")
@@ -381,18 +395,18 @@ def ingest_updates(
         if update_id is None:
             report.reject("missing_update_id")
             continue
-        if (
-            (previous_update_id is not None and update_id <= previous_update_id)
-            or update_id in seen_update_ids
-        ):
+        digest = sha256(
+            json.dumps(raw, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        receipt = (bot_id, update_id, digest)
+        maximum_update_id = max(
+            update_id, maximum_update_id if maximum_update_id is not None else update_id
+        )
+        if receipt in seen or db.get(TelegramUpdateReceipt, receipt) is not None:
             report.reject("duplicate_or_stale_update")
             continue
-        seen_update_ids.add(update_id)
-        maximum_update_id = (
-            update_id
-            if maximum_update_id is None
-            else max(maximum_update_id, update_id)
-        )
+        seen.add(receipt)
+        db.add(TelegramUpdateReceipt(bot_id=bot_id, update_id=update_id, digest=digest))
 
         event = next(
             (name for name in ALLOWED_UPDATES if isinstance(raw.get(name), dict)),
@@ -417,12 +431,38 @@ def ingest_updates(
 
         if event == "my_chat_member":
             status = _membership_status(raw)
+            member = payload.get("new_chat_member")
+            if status == "restricted" and member.get("is_member") is True:
+                status = "member"
+            effective_at = _timestamp(payload.get("date")) or now
+            previous_membership = as_utc(connection.last_membership_at)
+            if previous_membership and (
+                effective_at < previous_membership
+                or (
+                    effective_at == previous_membership
+                    and connection.last_membership_update_id is not None
+                    and update_id <= connection.last_membership_update_id
+                )
+            ):
+                if connection.status == "active" and (
+                    status in LEFT_STATUSES or status == "restricted"
+                ):
+                    open_gap(
+                        db, connection, "access_lost", effective_at, previous_membership
+                    )
+                report.reject("stale_membership")
+                continue
+            connection.last_membership_at = effective_at
+            connection.last_membership_update_id = update_id
+            connection.last_observed_at = now
             if status in MEMBER_STATUSES:
                 connection.status = "active"
                 connection.last_error = None
-            elif status in LEFT_STATUSES:
+                close_gap(db, connection, "access_lost", effective_at)
+            elif status in LEFT_STATUSES or status == "restricted":
                 connection.status = "needs_check"
                 connection.last_error = "bot_left"
+                open_gap(db, connection, "access_lost", effective_at)
             else:
                 connection.status = "needs_check"
                 connection.last_error = "invalid_membership"
@@ -433,11 +473,16 @@ def ingest_updates(
             report.accepted += 1
             continue
 
-        normalized, reason = _snapshot(db, chat, payload, update_id, event == "edited_message")
+        normalized, reason = _snapshot(
+            db, chat, payload, update_id, event == "edited_message"
+        )
         if normalized is None:
             connection.status = "needs_check"
             connection.last_error = str(reason)[:100]
             connection.updated_at = now
+            open_gap(
+                db, connection, "event_unreadable", now, now + timedelta(seconds=1)
+            )
             report.reject(str(reason))
             continue
         message_id, sent_at, edited_at, snapshot = normalized
@@ -452,14 +497,15 @@ def ingest_updates(
             now,
         )
         previous_event_at = as_utc(connection.last_event_at)
-        connection.last_event_at = max(previous_event_at or sent_at, sent_at)
+        event_at = edited_at or sent_at
+        connection.last_event_at = max(previous_event_at or event_at, event_at)
+        connection.last_observed_at = now
         connection.updated_at = now
         report.accepted += 1
 
-    if maximum_update_id is not None and (
-        state.last_update_id is None or maximum_update_id > state.last_update_id
-    ):
+    if maximum_update_id is not None and (seen or maximum_update_id != previous_update_id):
         state.last_update_id = maximum_update_id
+        state.last_update_at = now
     if username:
         state.username = username[:200]
     state.updated_at = now
