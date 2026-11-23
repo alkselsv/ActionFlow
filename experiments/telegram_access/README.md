@@ -10,9 +10,10 @@ it local and share only manually reviewed aggregate counts.
 ## Run locally
 
 1. Run from an interactive PowerShell terminal. The script prompts for the
-   token using hidden input if `TELEGRAM_BOT_TOKEN` is not already set. Never
-   paste it into chat, a repository file, an issue, or a command line. Do not
-   add it to `.env` for this probe.
+   token using hidden input if `TELEGRAM_BOT_TOKEN` is not already set. Type
+   the token at the prompt; in some Windows terminals `Ctrl+V` can enter a
+   control character instead of pasting. Never paste it into chat, a repository
+   file, an issue, or a command line. Do not add it to `.env` for this probe.
 2. In `@BotFather`, check and note the bot's Group Privacy setting. In `TEST`,
    send a fresh ordinary text and reply while this initial setting is active.
    Use a dedicated test bot: the setting applies to the bot in every group.

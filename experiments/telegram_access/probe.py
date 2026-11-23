@@ -11,9 +11,12 @@ import argparse
 import getpass
 import hashlib
 import hmac
+import http.client
 import json
 import os
 import re
+import socket
+import ssl
 import sys
 import time
 import urllib.error
@@ -31,6 +34,24 @@ def key(value: Any) -> str | None:
     if value is None:
         return None
     return hmac.new(REDACTION_KEY, str(value).encode("utf-8"), hashlib.sha256).hexdigest()[:20]
+
+
+def valid_bot_token(token: str) -> bool:
+    return re.fullmatch(r"[0-9]+:[A-Za-z0-9_-]+", token) is not None
+
+
+def safe_network_error(error: BaseException) -> str:
+    """Classify connection failures without exposing URLs or proxy details."""
+    reason = error.reason if isinstance(error, urllib.error.URLError) else error
+    if isinstance(reason, socket.gaierror):
+        return "DNS lookup for Telegram failed."
+    if isinstance(reason, (TimeoutError, socket.timeout)):
+        return "Connection to Telegram timed out."
+    if isinstance(reason, ssl.SSLError):
+        return "TLS connection to Telegram failed."
+    if isinstance(error, (json.JSONDecodeError, UnicodeDecodeError)):
+        return "Telegram endpoint returned an invalid response."
+    return "Could not connect to the Telegram API."
 
 
 def text_digest(value: Any) -> str | None:
@@ -171,8 +192,8 @@ def api(token: str, method: str, params: dict[str, Any] | None = None) -> dict[s
             payload = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         raise RuntimeError(f"Telegram API HTTP {exc.code}; response omitted to protect credentials") from None
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError):
-        raise RuntimeError("Telegram API request failed; details suppressed to protect credentials") from None
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, UnicodeDecodeError, http.client.HTTPException) as exc:
+        raise RuntimeError(safe_network_error(exc)) from None
     if not payload.get("ok"):
         raise RuntimeError(f"Telegram API rejected {method}; error details suppressed")
     return payload["result"]
@@ -191,9 +212,12 @@ def main() -> int:
     args = parser.parse_args()
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
     if not token and sys.stdin.isatty():
-        token = getpass.getpass("Telegram bot token (hidden; never sent to chat): ").strip()
+        token = getpass.getpass("Type Telegram bot token (hidden): ").strip()
     if not token:
         print("Set TELEGRAM_BOT_TOKEN or run in an interactive terminal to enter it securely.", file=sys.stderr)
+        return 2
+    if not valid_bot_token(token):
+        print("Bot token format is invalid; no Telegram request was sent. Re-enter it without spaces or control characters.", file=sys.stderr)
         return 2
     if REPO in args.output.resolve().parents or args.output.resolve() == REPO:
         print("Output must be outside the Git repository.", file=sys.stderr)
@@ -201,27 +225,34 @@ def main() -> int:
     if args.export and (REPO in args.export.resolve().parents or args.export.resolve() == REPO):
         print("Telegram export must be outside the Git repository.", file=sys.stderr)
         return 2
-    webhook = api(token, "getWebhookInfo")
-    if webhook.get("url"):
-        print("A webhook is configured; getUpdates cannot be used until it is removed.", file=sys.stderr)
+    try:
+        webhook = api(token, "getWebhookInfo")
+        if webhook.get("url"):
+            print("A webhook is configured; getUpdates cannot be used until it is removed.", file=sys.stderr)
+            return 2
+        me = api(token, "getMe")
+        updates = api(token, "getUpdates", {
+            "timeout": args.timeout,
+            "allowed_updates": json.dumps(["message", "edited_message", "my_chat_member"]),
+        })
+        rows = normalize_updates(updates)
+        report: dict[str, Any] = {
+            "bot": {"id_key": key(me.get("id")), "is_bot": me.get("is_bot")},
+            "transport": "getUpdates long polling",
+            "webhook_configured": False,
+            "updates": report_rows(rows),
+        }
+        if args.export:
+            export_rows = normalize_export(args.export)
+            report["export_comparison"] = compare_export(export_rows, rows)
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    except RuntimeError as exc:
+        print(str(exc), file=sys.stderr)
         return 2
-    me = api(token, "getMe")
-    updates = api(token, "getUpdates", {
-        "timeout": args.timeout,
-        "allowed_updates": json.dumps(["message", "edited_message", "my_chat_member"]),
-    })
-    rows = normalize_updates(updates)
-    report: dict[str, Any] = {
-        "bot": {"id_key": key(me.get("id")), "is_bot": me.get("is_bot")},
-        "transport": "getUpdates long polling",
-        "webhook_configured": False,
-        "updates": report_rows(rows),
-    }
-    if args.export:
-        export_rows = normalize_export(args.export)
-        report["export_comparison"] = compare_export(export_rows, rows)
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    except OSError:
+        print("Could not read the export or write the report; check the paths.", file=sys.stderr)
+        return 2
     print(f"Saved redacted probe report: {args.output}")
     print(f"Captured {len(rows)} update(s); message text and usernames were not written.")
     return 0

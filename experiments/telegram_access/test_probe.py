@@ -1,9 +1,24 @@
 import unittest
+import socket
+import urllib.error
 
-from probe import compare_export, normalize_updates, report_rows
+from probe import compare_export, normalize_updates, report_rows, safe_network_error, valid_bot_token
 
 
 class NormalizeUpdatesTests(unittest.TestCase):
+    def test_rejects_control_characters_in_a_bot_token(self):
+        self.assertTrue(valid_bot_token("123456789:Abc_def-987"))
+        self.assertFalse(valid_bot_token("\x16"))
+        self.assertFalse(valid_bot_token("123456789:Abc def"))
+
+    def test_network_error_classification_does_not_echo_details(self):
+        error = urllib.error.URLError(socket.gaierror("private network detail"))
+        self.assertEqual(safe_network_error(error), "DNS lookup for Telegram failed.")
+        self.assertNotIn("private network detail", safe_network_error(error))
+        decode_error = UnicodeDecodeError("utf-8", b"private-response-bytes", 0, 1, "invalid start byte")
+        self.assertEqual(safe_network_error(decode_error), "Telegram endpoint returned an invalid response.")
+        self.assertNotIn("private-response-bytes", safe_network_error(decode_error))
+
     def test_extracts_message_reply_edit_and_anonymized_actor(self):
         updates = [
             {"update_id": 7, "message": {
