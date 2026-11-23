@@ -1,0 +1,30 @@
+{
+  "dataset_id": "af025-synthetic-independent-v2",
+  "frozen_before_run": true,
+  "chats": 15,
+  "messages": 45,
+  "expected_by_type": {
+    "unanswered": 5,
+    "commitment": 5,
+    "complaint": 5
+  },
+  "development_overlap": [],
+  "input_sha256": {
+    "experiments/af025_independent/v2/annotation.json": "b256d2d7c3a2409eb985eeb327483ec8fc08db640a11150939aa17d5a4c5a72b",
+    "experiments/af025_independent/v2/fixtures/north-conv-n-af25-001.json": "0695cdb459eaa63320d9c58a8b2dfd863a6a59b24894db5b236252a8837fa17a",
+    "experiments/af025_independent/v2/fixtures/north-conv-n-af25-002.json": "4df7cd51ecdb668381541ec6c18966e8e00ea92eb1df78b9e47f141c392799bb",
+    "experiments/af025_independent/v2/fixtures/north-conv-n-af25-003.json": "6aa5ae4b0a416dffce085d9ac1f037e0221361b5c49974a17a28c2c5a7a5d38e",
+    "experiments/af025_independent/v2/fixtures/north-conv-n-af25-004.json": "da358310285795d890376870d6675847ada1945aad3f4a0cbf5a51ba8153d36d",
+    "experiments/af025_independent/v2/fixtures/north-conv-n-af25-005.json": "33f42df2f8187a50e3e04aef060c5afb3645e57703e4e2a1aa0cc2b9a673fc08",
+    "experiments/af025_independent/v2/fixtures/north-conv-n-af25-006.json": "f57369cdc357dad94321b3a47e1c82a552b08e71f4a09544bab7f545a5836306",
+    "experiments/af025_independent/v2/fixtures/north-conv-n-af25-007.json": "e1f729f1a56b9a0f99deb6b0f3e586c003010ec8869fbf1a08cb696acc91e4d5",
+    "experiments/af025_independent/v2/fixtures/north-conv-n-af25-008.json": "98c13e4b6d0e9747a4b7c21c95a3018e32eab1eb8433b34584355397200755c1",
+    "experiments/af025_independent/v2/fixtures/north-conv-n-af25-009.json": "01b76100cfea80a55691ec22c975d6ae3fe53b1f5cd3ef12f1cfd2f4f102583b",
+    "experiments/af025_independent/v2/fixtures/north-conv-n-af25-010.json": "9f76995c0b92dc88c6f86ce2ab09a7da33ede0025c232324d837754e1f6d389b",
+    "experiments/af025_independent/v2/fixtures/north-conv-n-af25-011.json": "9473b5f3e5246a7525a0dc830b24e151639079228a685b98620b0fb75129cc42",
+    "experiments/af025_independent/v2/fixtures/north-conv-n-af25-012.json": "f9e93a709ebc9bd7e8ae2d7a8842da7f8c2975885050c0a5d58c10597d205a67",
+    "experiments/af025_independent/v2/fixtures/north-conv-n-af25-013.json": "f6dc907682fab56a039344e18a019f4b7070f3637b728e3bc7f48d2e10e68dc2",
+    "experiments/af025_independent/v2/fixtures/north-conv-n-af25-014.json": "fc2941397bfda425a19dd998e174af074ceb50f5e9dba9b5b066be8fe3b8828c",
+    "experiments/af025_independent/v2/fixtures/north-conv-n-af25-015.json": "317176d64037f8a42921358f0412de0becd3471ab3a6f3f4e15bf3b90d5ff093"
+  }
+}

@@ -1,0 +1,199 @@
+{
+  "dataset_id": "af025-synthetic-independent-v1",
+  "synthetic": true,
+  "authorship": "agent-generated before evaluation; not independently human-annotated",
+  "development_overlap": [],
+  "protocol": "docs/experiment/af-025-evaluation-protocol.md",
+  "cases": [
+    {
+      "chat": "n-af25-001",
+      "expected": {
+        "type": "unanswered",
+        "anchor": 2,
+        "evidence": [
+          2
+        ],
+        "critical": false
+      },
+      "message_count": 3
+    },
+    {
+      "chat": "n-af25-002",
+      "expected": {
+        "type": "commitment",
+        "anchor": 2,
+        "evidence": [
+          2
+        ],
+        "critical": false
+      },
+      "message_count": 3
+    },
+    {
+      "chat": "n-af25-003",
+      "expected": {
+        "type": "complaint",
+        "anchor": 1,
+        "evidence": [
+          1,
+          2,
+          3
+        ],
+        "critical": true
+      },
+      "message_count": 3
+    },
+    {
+      "chat": "n-af25-004",
+      "expected": {
+        "type": "unanswered",
+        "anchor": 2,
+        "evidence": [
+          2
+        ],
+        "critical": false
+      },
+      "message_count": 3
+    },
+    {
+      "chat": "n-af25-005",
+      "expected": {
+        "type": "commitment",
+        "anchor": 2,
+        "evidence": [
+          2
+        ],
+        "critical": false
+      },
+      "message_count": 3
+    },
+    {
+      "chat": "n-af25-006",
+      "expected": {
+        "type": "complaint",
+        "anchor": 1,
+        "evidence": [
+          1,
+          2,
+          3
+        ],
+        "critical": true
+      },
+      "message_count": 3
+    },
+    {
+      "chat": "n-af25-007",
+      "expected": {
+        "type": "unanswered",
+        "anchor": 2,
+        "evidence": [
+          2
+        ],
+        "critical": false
+      },
+      "message_count": 3
+    },
+    {
+      "chat": "n-af25-008",
+      "expected": {
+        "type": "commitment",
+        "anchor": 2,
+        "evidence": [
+          2
+        ],
+        "critical": false
+      },
+      "message_count": 3
+    },
+    {
+      "chat": "n-af25-009",
+      "expected": {
+        "type": "complaint",
+        "anchor": 1,
+        "evidence": [
+          1,
+          2,
+          3
+        ],
+        "critical": true
+      },
+      "message_count": 3
+    },
+    {
+      "chat": "n-af25-010",
+      "expected": {
+        "type": "unanswered",
+        "anchor": 2,
+        "evidence": [
+          2
+        ],
+        "critical": false
+      },
+      "message_count": 3
+    },
+    {
+      "chat": "n-af25-011",
+      "expected": {
+        "type": "commitment",
+        "anchor": 2,
+        "evidence": [
+          2
+        ],
+        "critical": false
+      },
+      "message_count": 3
+    },
+    {
+      "chat": "n-af25-012",
+      "expected": {
+        "type": "complaint",
+        "anchor": 1,
+        "evidence": [
+          1,
+          2,
+          3
+        ],
+        "critical": true
+      },
+      "message_count": 3
+    },
+    {
+      "chat": "n-af25-013",
+      "expected": {
+        "type": "unanswered",
+        "anchor": 2,
+        "evidence": [
+          2
+        ],
+        "critical": false
+      },
+      "message_count": 3
+    },
+    {
+      "chat": "n-af25-014",
+      "expected": {
+        "type": "commitment",
+        "anchor": 2,
+        "evidence": [
+          2
+        ],
+        "critical": false
+      },
+      "message_count": 3
+    },
+    {
+      "chat": "n-af25-015",
+      "expected": {
+        "type": "complaint",
+        "anchor": 1,
+        "evidence": [
+          1,
+          2,
+          3
+        ],
+        "critical": true
+      },
+      "message_count": 3
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "name": "Synthetic AF-025 015",
+  "type": "personal_chat",
+  "id": 25015,
+  "messages": [
+    {
+      "id": 1,
+      "type": "message",
+      "date": "2026-09-20T14:55:00",
+      "date_unixtime": "1789905300",
+      "from": "Synthetic Customer",
+      "from_id": "customer-1",
+      "text": "Третий раз интеграция сбрасывает настройки, это не устраивает.",
+      "_actionflow_synthetic_source": {
+        "external_id": "n-af25-015-001",
+        "revision": 1,
+        "sender_role": "customer",
+        "sent_at": "2026-09-20T14:55:00+03:00",
+        "observed_at": "2026-09-20T14:56:00+03:00",
+        "reply_to_external_id": null,
+        "source": "agent_generated_synthetic"
+      }
+    },
+    {
+      "id": 2,
+      "type": "message",
+      "date": "2026-09-20T15:00:00",
+      "date_unixtime": "1789905600",
+      "from": "Synthetic Employee",
+      "from_id": "employee-1",
+      "text": "Понимаю, уточню ситуацию.",
+      "_actionflow_synthetic_source": {
+        "external_id": "n-af25-015-002",
+        "revision": 1,
+        "sender_role": "employee",
+        "sent_at": "2026-09-20T15:00:00+03:00",
+        "observed_at": "2026-09-20T15:01:00+03:00",
+        "reply_to_external_id": "n-af25-015-001",
+        "source": "agent_generated_synthetic"
+      }
+    },
+    {
+      "id": 3,
+      "type": "message",
+      "date": "2026-09-20T15:05:00",
+      "date_unixtime": "1789905900",
+      "from": "Synthetic Customer",
+      "from_id": "customer-1",
+      "text": "Прошу зафиксировать претензию и дать план исправления.",
+      "_actionflow_synthetic_source": {
+        "external_id": "n-af25-015-003",
+        "revision": 1,
+        "sender_role": "customer",
+        "sent_at": "2026-09-20T15:05:00+03:00",
+        "observed_at": "2026-09-20T15:06:00+03:00",
+        "reply_to_external_id": "n-af25-015-002",
+        "source": "agent_generated_synthetic"
+      }
+    }
+  ],
+  "_actionflow_fixture": {
+    "synthetic": true,
+    "workspace_id": "af25-independent",
+    "conversation_id": "n-af25-015",
+    "source_record_count": 3,
+    "source_export_format": "agent-generated synthetic",
+    "not_a_real_telegram_export": true
+  }
+}

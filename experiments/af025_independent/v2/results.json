@@ -1,0 +1,1169 @@
+{
+  "dataset_id": "af025-synthetic-independent-v2",
+  "authorship": "agent-generated before evaluation; not independently human-annotated",
+  "development_overlap": [],
+  "frozen_input_sha256": {
+    "experiments/af025_independent/v2/annotation.json": "b256d2d7c3a2409eb985eeb327483ec8fc08db640a11150939aa17d5a4c5a72b",
+    "experiments/af025_independent/v2/fixtures/north-conv-n-af25-001.json": "0695cdb459eaa63320d9c58a8b2dfd863a6a59b24894db5b236252a8837fa17a",
+    "experiments/af025_independent/v2/fixtures/north-conv-n-af25-002.json": "4df7cd51ecdb668381541ec6c18966e8e00ea92eb1df78b9e47f141c392799bb",
+    "experiments/af025_independent/v2/fixtures/north-conv-n-af25-003.json": "6aa5ae4b0a416dffce085d9ac1f037e0221361b5c49974a17a28c2c5a7a5d38e",
+    "experiments/af025_independent/v2/fixtures/north-conv-n-af25-004.json": "da358310285795d890376870d6675847ada1945aad3f4a0cbf5a51ba8153d36d",
+    "experiments/af025_independent/v2/fixtures/north-conv-n-af25-005.json": "33f42df2f8187a50e3e04aef060c5afb3645e57703e4e2a1aa0cc2b9a673fc08",
+    "experiments/af025_independent/v2/fixtures/north-conv-n-af25-006.json": "f57369cdc357dad94321b3a47e1c82a552b08e71f4a09544bab7f545a5836306",
+    "experiments/af025_independent/v2/fixtures/north-conv-n-af25-007.json": "e1f729f1a56b9a0f99deb6b0f3e586c003010ec8869fbf1a08cb696acc91e4d5",
+    "experiments/af025_independent/v2/fixtures/north-conv-n-af25-008.json": "98c13e4b6d0e9747a4b7c21c95a3018e32eab1eb8433b34584355397200755c1",
+    "experiments/af025_independent/v2/fixtures/north-conv-n-af25-009.json": "01b76100cfea80a55691ec22c975d6ae3fe53b1f5cd3ef12f1cfd2f4f102583b",
+    "experiments/af025_independent/v2/fixtures/north-conv-n-af25-010.json": "9f76995c0b92dc88c6f86ce2ab09a7da33ede0025c232324d837754e1f6d389b",
+    "experiments/af025_independent/v2/fixtures/north-conv-n-af25-011.json": "9473b5f3e5246a7525a0dc830b24e151639079228a685b98620b0fb75129cc42",
+    "experiments/af025_independent/v2/fixtures/north-conv-n-af25-012.json": "f9e93a709ebc9bd7e8ae2d7a8842da7f8c2975885050c0a5d58c10597d205a67",
+    "experiments/af025_independent/v2/fixtures/north-conv-n-af25-013.json": "f6dc907682fab56a039344e18a019f4b7070f3637b728e3bc7f48d2e10e68dc2",
+    "experiments/af025_independent/v2/fixtures/north-conv-n-af25-014.json": "fc2941397bfda425a19dd998e174af074ceb50f5e9dba9b5b066be8fe3b8828c",
+    "experiments/af025_independent/v2/fixtures/north-conv-n-af25-015.json": "317176d64037f8a42921358f0412de0becd3471ab3a6f3f4e15bf3b90d5ff093"
+  },
+  "configuration": {
+    "commit": "e325c15d813e1d378f4654b56c893518bbcda757",
+    "model": "local-baseline-unanswered-v1",
+    "unanswered_detector": "local-unanswered-v3",
+    "prompt_rules": "unanswered-rules-v3",
+    "commitment_detector": "local-commitment-v1",
+    "complaint_detector": "local-complaint-v1",
+    "context": "baseline; Cognee excluded (issue #23 requires fixes)",
+    "cost_usd": null,
+    "external_cost_usd": 0
+  },
+  "metrics": {
+    "unanswered": {
+      "duplicates": 0,
+      "tp": 5,
+      "evidence_correct": 5,
+      "fp": 15,
+      "fn": 0,
+      "sla_checked": 0,
+      "sla_errors": 0,
+      "invalid": 0,
+      "precision": 0.25,
+      "recall": 1.0
+    },
+    "commitment": {
+      "duplicates": 0,
+      "fp": 10,
+      "tp": 5,
+      "evidence_correct": 5,
+      "fn": 0,
+      "sla_checked": 0,
+      "sla_errors": 0,
+      "invalid": 0,
+      "precision": 0.3333333333333333,
+      "recall": 1.0
+    },
+    "complaint": {
+      "duplicates": 0,
+      "tp": 5,
+      "evidence_correct": 5,
+      "fp": 0,
+      "fn": 0,
+      "sla_checked": 0,
+      "sla_errors": 0,
+      "invalid": 0,
+      "precision": 1.0,
+      "recall": 1.0
+    }
+  },
+  "slices": [
+    {
+      "split": "holdout",
+      "chat": "n-af25-001",
+      "as_of": "2026-09-20T23:00:00+00:00",
+      "duration_seconds": 0.073278,
+      "cost_usd": null,
+      "input_limitations": {
+        "attachments": 0,
+        "unknown_authors": 0,
+        "system_events": 0,
+        "message_count": 3,
+        "context_messages": 0,
+        "missing_settings": false,
+        "unavailable_messages": 0,
+        "history_incomplete": true,
+        "uncertain_revisions": 0
+      },
+      "detectors": {
+        "unanswered": {
+          "model": "local-baseline-unanswered-v1",
+          "detector_version": "local-unanswered-v3",
+          "duration_ms": 2,
+          "usage": {
+            "input_tokens": 30,
+            "output_tokens": 68,
+            "total_tokens": 99,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        },
+        "commitment": {
+          "model": "local-baseline-commitment-v1",
+          "detector_version": "local-commitment-v1",
+          "duration_ms": 1,
+          "usage": {
+            "input_tokens": 30,
+            "output_tokens": 18,
+            "total_tokens": 49,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        },
+        "complaint": {
+          "model": "local-baseline-complaint-v1",
+          "detector_version": "local-complaint-v1",
+          "duration_ms": 1,
+          "usage": {
+            "input_tokens": 30,
+            "output_tokens": 0,
+            "total_tokens": 30,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        }
+      },
+      "counts": {
+        "unanswered": {
+          "duplicates": 0,
+          "tp": 1,
+          "evidence_correct": 1,
+          "fp": 1
+        },
+        "commitment": {
+          "duplicates": 0,
+          "fp": 1
+        },
+        "complaint": {}
+      }
+    },
+    {
+      "split": "holdout",
+      "chat": "n-af25-002",
+      "as_of": "2026-09-20T23:00:00+00:00",
+      "duration_seconds": 0.042638,
+      "cost_usd": null,
+      "input_limitations": {
+        "attachments": 0,
+        "unknown_authors": 0,
+        "system_events": 0,
+        "message_count": 3,
+        "context_messages": 0,
+        "missing_settings": false,
+        "unavailable_messages": 0,
+        "history_incomplete": true,
+        "uncertain_revisions": 0
+      },
+      "detectors": {
+        "unanswered": {
+          "model": "local-baseline-unanswered-v1",
+          "detector_version": "local-unanswered-v3",
+          "duration_ms": 2,
+          "usage": {
+            "input_tokens": 23,
+            "output_tokens": 37,
+            "total_tokens": 60,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        },
+        "commitment": {
+          "model": "local-baseline-commitment-v1",
+          "detector_version": "local-commitment-v1",
+          "duration_ms": 1,
+          "usage": {
+            "input_tokens": 23,
+            "output_tokens": 27,
+            "total_tokens": 51,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        },
+        "complaint": {
+          "model": "local-baseline-complaint-v1",
+          "detector_version": "local-complaint-v1",
+          "duration_ms": 1,
+          "usage": {
+            "input_tokens": 23,
+            "output_tokens": 0,
+            "total_tokens": 23,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        }
+      },
+      "counts": {
+        "unanswered": {
+          "duplicates": 0,
+          "fp": 1
+        },
+        "commitment": {
+          "duplicates": 0,
+          "tp": 1,
+          "evidence_correct": 1
+        },
+        "complaint": {}
+      }
+    },
+    {
+      "split": "holdout",
+      "chat": "n-af25-003",
+      "as_of": "2026-09-20T23:00:00+00:00",
+      "duration_seconds": 0.041106,
+      "cost_usd": null,
+      "input_limitations": {
+        "attachments": 0,
+        "unknown_authors": 0,
+        "system_events": 0,
+        "message_count": 3,
+        "context_messages": 0,
+        "missing_settings": false,
+        "unavailable_messages": 0,
+        "history_incomplete": true,
+        "uncertain_revisions": 0
+      },
+      "detectors": {
+        "unanswered": {
+          "model": "local-baseline-unanswered-v1",
+          "detector_version": "local-unanswered-v3",
+          "duration_ms": 2,
+          "usage": {
+            "input_tokens": 35,
+            "output_tokens": 32,
+            "total_tokens": 67,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        },
+        "commitment": {
+          "model": "local-baseline-commitment-v1",
+          "detector_version": "local-commitment-v1",
+          "duration_ms": 1,
+          "usage": {
+            "input_tokens": 35,
+            "output_tokens": 15,
+            "total_tokens": 50,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        },
+        "complaint": {
+          "model": "local-baseline-complaint-v1",
+          "detector_version": "local-complaint-v1",
+          "duration_ms": 1,
+          "usage": {
+            "input_tokens": 35,
+            "output_tokens": 48,
+            "total_tokens": 84,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        }
+      },
+      "counts": {
+        "unanswered": {
+          "duplicates": 0,
+          "fp": 1
+        },
+        "commitment": {
+          "duplicates": 0,
+          "fp": 1
+        },
+        "complaint": {
+          "duplicates": 0,
+          "tp": 1,
+          "evidence_correct": 1
+        }
+      }
+    },
+    {
+      "split": "holdout",
+      "chat": "n-af25-004",
+      "as_of": "2026-09-20T23:00:00+00:00",
+      "duration_seconds": 0.047315,
+      "cost_usd": null,
+      "input_limitations": {
+        "attachments": 0,
+        "unknown_authors": 0,
+        "system_events": 0,
+        "message_count": 3,
+        "context_messages": 0,
+        "missing_settings": false,
+        "unavailable_messages": 0,
+        "history_incomplete": true,
+        "uncertain_revisions": 0
+      },
+      "detectors": {
+        "unanswered": {
+          "model": "local-baseline-unanswered-v1",
+          "detector_version": "local-unanswered-v3",
+          "duration_ms": 3,
+          "usage": {
+            "input_tokens": 30,
+            "output_tokens": 68,
+            "total_tokens": 99,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        },
+        "commitment": {
+          "model": "local-baseline-commitment-v1",
+          "detector_version": "local-commitment-v1",
+          "duration_ms": 1,
+          "usage": {
+            "input_tokens": 30,
+            "output_tokens": 18,
+            "total_tokens": 49,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        },
+        "complaint": {
+          "model": "local-baseline-complaint-v1",
+          "detector_version": "local-complaint-v1",
+          "duration_ms": 0,
+          "usage": {
+            "input_tokens": 30,
+            "output_tokens": 0,
+            "total_tokens": 30,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        }
+      },
+      "counts": {
+        "unanswered": {
+          "duplicates": 0,
+          "tp": 1,
+          "evidence_correct": 1,
+          "fp": 1
+        },
+        "commitment": {
+          "duplicates": 0,
+          "fp": 1
+        },
+        "complaint": {}
+      }
+    },
+    {
+      "split": "holdout",
+      "chat": "n-af25-005",
+      "as_of": "2026-09-20T23:00:00+00:00",
+      "duration_seconds": 0.036469,
+      "cost_usd": null,
+      "input_limitations": {
+        "attachments": 0,
+        "unknown_authors": 0,
+        "system_events": 0,
+        "message_count": 3,
+        "context_messages": 0,
+        "missing_settings": false,
+        "unavailable_messages": 0,
+        "history_incomplete": true,
+        "uncertain_revisions": 0
+      },
+      "detectors": {
+        "unanswered": {
+          "model": "local-baseline-unanswered-v1",
+          "detector_version": "local-unanswered-v3",
+          "duration_ms": 1,
+          "usage": {
+            "input_tokens": 23,
+            "output_tokens": 37,
+            "total_tokens": 60,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        },
+        "commitment": {
+          "model": "local-baseline-commitment-v1",
+          "detector_version": "local-commitment-v1",
+          "duration_ms": 1,
+          "usage": {
+            "input_tokens": 23,
+            "output_tokens": 27,
+            "total_tokens": 51,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        },
+        "complaint": {
+          "model": "local-baseline-complaint-v1",
+          "detector_version": "local-complaint-v1",
+          "duration_ms": 0,
+          "usage": {
+            "input_tokens": 23,
+            "output_tokens": 0,
+            "total_tokens": 23,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        }
+      },
+      "counts": {
+        "unanswered": {
+          "duplicates": 0,
+          "fp": 1
+        },
+        "commitment": {
+          "duplicates": 0,
+          "tp": 1,
+          "evidence_correct": 1
+        },
+        "complaint": {}
+      }
+    },
+    {
+      "split": "holdout",
+      "chat": "n-af25-006",
+      "as_of": "2026-09-20T23:00:00+00:00",
+      "duration_seconds": 0.047421,
+      "cost_usd": null,
+      "input_limitations": {
+        "attachments": 0,
+        "unknown_authors": 0,
+        "system_events": 0,
+        "message_count": 3,
+        "context_messages": 0,
+        "missing_settings": false,
+        "unavailable_messages": 0,
+        "history_incomplete": true,
+        "uncertain_revisions": 0
+      },
+      "detectors": {
+        "unanswered": {
+          "model": "local-baseline-unanswered-v1",
+          "detector_version": "local-unanswered-v3",
+          "duration_ms": 2,
+          "usage": {
+            "input_tokens": 35,
+            "output_tokens": 32,
+            "total_tokens": 67,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        },
+        "commitment": {
+          "model": "local-baseline-commitment-v1",
+          "detector_version": "local-commitment-v1",
+          "duration_ms": 1,
+          "usage": {
+            "input_tokens": 35,
+            "output_tokens": 15,
+            "total_tokens": 50,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        },
+        "complaint": {
+          "model": "local-baseline-complaint-v1",
+          "detector_version": "local-complaint-v1",
+          "duration_ms": 1,
+          "usage": {
+            "input_tokens": 35,
+            "output_tokens": 48,
+            "total_tokens": 84,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        }
+      },
+      "counts": {
+        "unanswered": {
+          "duplicates": 0,
+          "fp": 1
+        },
+        "commitment": {
+          "duplicates": 0,
+          "fp": 1
+        },
+        "complaint": {
+          "duplicates": 0,
+          "tp": 1,
+          "evidence_correct": 1
+        }
+      }
+    },
+    {
+      "split": "holdout",
+      "chat": "n-af25-007",
+      "as_of": "2026-09-20T23:00:00+00:00",
+      "duration_seconds": 0.104956,
+      "cost_usd": null,
+      "input_limitations": {
+        "attachments": 0,
+        "unknown_authors": 0,
+        "system_events": 0,
+        "message_count": 3,
+        "context_messages": 0,
+        "missing_settings": false,
+        "unavailable_messages": 0,
+        "history_incomplete": true,
+        "uncertain_revisions": 0
+      },
+      "detectors": {
+        "unanswered": {
+          "model": "local-baseline-unanswered-v1",
+          "detector_version": "local-unanswered-v3",
+          "duration_ms": 7,
+          "usage": {
+            "input_tokens": 30,
+            "output_tokens": 68,
+            "total_tokens": 99,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        },
+        "commitment": {
+          "model": "local-baseline-commitment-v1",
+          "detector_version": "local-commitment-v1",
+          "duration_ms": 1,
+          "usage": {
+            "input_tokens": 30,
+            "output_tokens": 18,
+            "total_tokens": 49,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        },
+        "complaint": {
+          "model": "local-baseline-complaint-v1",
+          "detector_version": "local-complaint-v1",
+          "duration_ms": 1,
+          "usage": {
+            "input_tokens": 30,
+            "output_tokens": 0,
+            "total_tokens": 30,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        }
+      },
+      "counts": {
+        "unanswered": {
+          "duplicates": 0,
+          "tp": 1,
+          "evidence_correct": 1,
+          "fp": 1
+        },
+        "commitment": {
+          "duplicates": 0,
+          "fp": 1
+        },
+        "complaint": {}
+      }
+    },
+    {
+      "split": "holdout",
+      "chat": "n-af25-008",
+      "as_of": "2026-09-20T23:00:00+00:00",
+      "duration_seconds": 0.040061,
+      "cost_usd": null,
+      "input_limitations": {
+        "attachments": 0,
+        "unknown_authors": 0,
+        "system_events": 0,
+        "message_count": 3,
+        "context_messages": 0,
+        "missing_settings": false,
+        "unavailable_messages": 0,
+        "history_incomplete": true,
+        "uncertain_revisions": 0
+      },
+      "detectors": {
+        "unanswered": {
+          "model": "local-baseline-unanswered-v1",
+          "detector_version": "local-unanswered-v3",
+          "duration_ms": 2,
+          "usage": {
+            "input_tokens": 23,
+            "output_tokens": 37,
+            "total_tokens": 60,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        },
+        "commitment": {
+          "model": "local-baseline-commitment-v1",
+          "detector_version": "local-commitment-v1",
+          "duration_ms": 1,
+          "usage": {
+            "input_tokens": 23,
+            "output_tokens": 27,
+            "total_tokens": 51,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        },
+        "complaint": {
+          "model": "local-baseline-complaint-v1",
+          "detector_version": "local-complaint-v1",
+          "duration_ms": 1,
+          "usage": {
+            "input_tokens": 23,
+            "output_tokens": 0,
+            "total_tokens": 23,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        }
+      },
+      "counts": {
+        "unanswered": {
+          "duplicates": 0,
+          "fp": 1
+        },
+        "commitment": {
+          "duplicates": 0,
+          "tp": 1,
+          "evidence_correct": 1
+        },
+        "complaint": {}
+      }
+    },
+    {
+      "split": "holdout",
+      "chat": "n-af25-009",
+      "as_of": "2026-09-20T23:00:00+00:00",
+      "duration_seconds": 0.042775,
+      "cost_usd": null,
+      "input_limitations": {
+        "attachments": 0,
+        "unknown_authors": 0,
+        "system_events": 0,
+        "message_count": 3,
+        "context_messages": 0,
+        "missing_settings": false,
+        "unavailable_messages": 0,
+        "history_incomplete": true,
+        "uncertain_revisions": 0
+      },
+      "detectors": {
+        "unanswered": {
+          "model": "local-baseline-unanswered-v1",
+          "detector_version": "local-unanswered-v3",
+          "duration_ms": 2,
+          "usage": {
+            "input_tokens": 35,
+            "output_tokens": 32,
+            "total_tokens": 67,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        },
+        "commitment": {
+          "model": "local-baseline-commitment-v1",
+          "detector_version": "local-commitment-v1",
+          "duration_ms": 1,
+          "usage": {
+            "input_tokens": 35,
+            "output_tokens": 15,
+            "total_tokens": 50,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        },
+        "complaint": {
+          "model": "local-baseline-complaint-v1",
+          "detector_version": "local-complaint-v1",
+          "duration_ms": 1,
+          "usage": {
+            "input_tokens": 35,
+            "output_tokens": 48,
+            "total_tokens": 84,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        }
+      },
+      "counts": {
+        "unanswered": {
+          "duplicates": 0,
+          "fp": 1
+        },
+        "commitment": {
+          "duplicates": 0,
+          "fp": 1
+        },
+        "complaint": {
+          "duplicates": 0,
+          "tp": 1,
+          "evidence_correct": 1
+        }
+      }
+    },
+    {
+      "split": "holdout",
+      "chat": "n-af25-010",
+      "as_of": "2026-09-20T23:00:00+00:00",
+      "duration_seconds": 0.048124,
+      "cost_usd": null,
+      "input_limitations": {
+        "attachments": 0,
+        "unknown_authors": 0,
+        "system_events": 0,
+        "message_count": 3,
+        "context_messages": 0,
+        "missing_settings": false,
+        "unavailable_messages": 0,
+        "history_incomplete": true,
+        "uncertain_revisions": 0
+      },
+      "detectors": {
+        "unanswered": {
+          "model": "local-baseline-unanswered-v1",
+          "detector_version": "local-unanswered-v3",
+          "duration_ms": 2,
+          "usage": {
+            "input_tokens": 30,
+            "output_tokens": 68,
+            "total_tokens": 99,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        },
+        "commitment": {
+          "model": "local-baseline-commitment-v1",
+          "detector_version": "local-commitment-v1",
+          "duration_ms": 1,
+          "usage": {
+            "input_tokens": 30,
+            "output_tokens": 18,
+            "total_tokens": 49,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        },
+        "complaint": {
+          "model": "local-baseline-complaint-v1",
+          "detector_version": "local-complaint-v1",
+          "duration_ms": 1,
+          "usage": {
+            "input_tokens": 30,
+            "output_tokens": 0,
+            "total_tokens": 30,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        }
+      },
+      "counts": {
+        "unanswered": {
+          "duplicates": 0,
+          "tp": 1,
+          "evidence_correct": 1,
+          "fp": 1
+        },
+        "commitment": {
+          "duplicates": 0,
+          "fp": 1
+        },
+        "complaint": {}
+      }
+    },
+    {
+      "split": "holdout",
+      "chat": "n-af25-011",
+      "as_of": "2026-09-20T23:00:00+00:00",
+      "duration_seconds": 0.04257,
+      "cost_usd": null,
+      "input_limitations": {
+        "attachments": 0,
+        "unknown_authors": 0,
+        "system_events": 0,
+        "message_count": 3,
+        "context_messages": 0,
+        "missing_settings": false,
+        "unavailable_messages": 0,
+        "history_incomplete": true,
+        "uncertain_revisions": 0
+      },
+      "detectors": {
+        "unanswered": {
+          "model": "local-baseline-unanswered-v1",
+          "detector_version": "local-unanswered-v3",
+          "duration_ms": 3,
+          "usage": {
+            "input_tokens": 23,
+            "output_tokens": 37,
+            "total_tokens": 60,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        },
+        "commitment": {
+          "model": "local-baseline-commitment-v1",
+          "detector_version": "local-commitment-v1",
+          "duration_ms": 1,
+          "usage": {
+            "input_tokens": 23,
+            "output_tokens": 27,
+            "total_tokens": 51,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        },
+        "complaint": {
+          "model": "local-baseline-complaint-v1",
+          "detector_version": "local-complaint-v1",
+          "duration_ms": 1,
+          "usage": {
+            "input_tokens": 23,
+            "output_tokens": 0,
+            "total_tokens": 23,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        }
+      },
+      "counts": {
+        "unanswered": {
+          "duplicates": 0,
+          "fp": 1
+        },
+        "commitment": {
+          "duplicates": 0,
+          "tp": 1,
+          "evidence_correct": 1
+        },
+        "complaint": {}
+      }
+    },
+    {
+      "split": "holdout",
+      "chat": "n-af25-012",
+      "as_of": "2026-09-20T23:00:00+00:00",
+      "duration_seconds": 0.039704,
+      "cost_usd": null,
+      "input_limitations": {
+        "attachments": 0,
+        "unknown_authors": 0,
+        "system_events": 0,
+        "message_count": 3,
+        "context_messages": 0,
+        "missing_settings": false,
+        "unavailable_messages": 0,
+        "history_incomplete": true,
+        "uncertain_revisions": 0
+      },
+      "detectors": {
+        "unanswered": {
+          "model": "local-baseline-unanswered-v1",
+          "detector_version": "local-unanswered-v3",
+          "duration_ms": 1,
+          "usage": {
+            "input_tokens": 35,
+            "output_tokens": 32,
+            "total_tokens": 67,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        },
+        "commitment": {
+          "model": "local-baseline-commitment-v1",
+          "detector_version": "local-commitment-v1",
+          "duration_ms": 0,
+          "usage": {
+            "input_tokens": 35,
+            "output_tokens": 15,
+            "total_tokens": 50,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        },
+        "complaint": {
+          "model": "local-baseline-complaint-v1",
+          "detector_version": "local-complaint-v1",
+          "duration_ms": 1,
+          "usage": {
+            "input_tokens": 35,
+            "output_tokens": 48,
+            "total_tokens": 84,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        }
+      },
+      "counts": {
+        "unanswered": {
+          "duplicates": 0,
+          "fp": 1
+        },
+        "commitment": {
+          "duplicates": 0,
+          "fp": 1
+        },
+        "complaint": {
+          "duplicates": 0,
+          "tp": 1,
+          "evidence_correct": 1
+        }
+      }
+    },
+    {
+      "split": "holdout",
+      "chat": "n-af25-013",
+      "as_of": "2026-09-20T23:00:00+00:00",
+      "duration_seconds": 0.045957,
+      "cost_usd": null,
+      "input_limitations": {
+        "attachments": 0,
+        "unknown_authors": 0,
+        "system_events": 0,
+        "message_count": 3,
+        "context_messages": 0,
+        "missing_settings": false,
+        "unavailable_messages": 0,
+        "history_incomplete": true,
+        "uncertain_revisions": 0
+      },
+      "detectors": {
+        "unanswered": {
+          "model": "local-baseline-unanswered-v1",
+          "detector_version": "local-unanswered-v3",
+          "duration_ms": 1,
+          "usage": {
+            "input_tokens": 30,
+            "output_tokens": 68,
+            "total_tokens": 99,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        },
+        "commitment": {
+          "model": "local-baseline-commitment-v1",
+          "detector_version": "local-commitment-v1",
+          "duration_ms": 1,
+          "usage": {
+            "input_tokens": 30,
+            "output_tokens": 18,
+            "total_tokens": 49,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        },
+        "complaint": {
+          "model": "local-baseline-complaint-v1",
+          "detector_version": "local-complaint-v1",
+          "duration_ms": 0,
+          "usage": {
+            "input_tokens": 30,
+            "output_tokens": 0,
+            "total_tokens": 30,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        }
+      },
+      "counts": {
+        "unanswered": {
+          "duplicates": 0,
+          "tp": 1,
+          "evidence_correct": 1,
+          "fp": 1
+        },
+        "commitment": {
+          "duplicates": 0,
+          "fp": 1
+        },
+        "complaint": {}
+      }
+    },
+    {
+      "split": "holdout",
+      "chat": "n-af25-014",
+      "as_of": "2026-09-20T23:00:00+00:00",
+      "duration_seconds": 0.043795,
+      "cost_usd": null,
+      "input_limitations": {
+        "attachments": 0,
+        "unknown_authors": 0,
+        "system_events": 0,
+        "message_count": 3,
+        "context_messages": 0,
+        "missing_settings": false,
+        "unavailable_messages": 0,
+        "history_incomplete": true,
+        "uncertain_revisions": 0
+      },
+      "detectors": {
+        "unanswered": {
+          "model": "local-baseline-unanswered-v1",
+          "detector_version": "local-unanswered-v3",
+          "duration_ms": 3,
+          "usage": {
+            "input_tokens": 23,
+            "output_tokens": 37,
+            "total_tokens": 60,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        },
+        "commitment": {
+          "model": "local-baseline-commitment-v1",
+          "detector_version": "local-commitment-v1",
+          "duration_ms": 1,
+          "usage": {
+            "input_tokens": 23,
+            "output_tokens": 27,
+            "total_tokens": 51,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        },
+        "complaint": {
+          "model": "local-baseline-complaint-v1",
+          "detector_version": "local-complaint-v1",
+          "duration_ms": 1,
+          "usage": {
+            "input_tokens": 23,
+            "output_tokens": 0,
+            "total_tokens": 23,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        }
+      },
+      "counts": {
+        "unanswered": {
+          "duplicates": 0,
+          "fp": 1
+        },
+        "commitment": {
+          "duplicates": 0,
+          "tp": 1,
+          "evidence_correct": 1
+        },
+        "complaint": {}
+      }
+    },
+    {
+      "split": "holdout",
+      "chat": "n-af25-015",
+      "as_of": "2026-09-20T23:00:00+00:00",
+      "duration_seconds": 0.04121,
+      "cost_usd": null,
+      "input_limitations": {
+        "attachments": 0,
+        "unknown_authors": 0,
+        "system_events": 0,
+        "message_count": 3,
+        "context_messages": 0,
+        "missing_settings": false,
+        "unavailable_messages": 0,
+        "history_incomplete": true,
+        "uncertain_revisions": 0
+      },
+      "detectors": {
+        "unanswered": {
+          "model": "local-baseline-unanswered-v1",
+          "detector_version": "local-unanswered-v3",
+          "duration_ms": 2,
+          "usage": {
+            "input_tokens": 35,
+            "output_tokens": 32,
+            "total_tokens": 67,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        },
+        "commitment": {
+          "model": "local-baseline-commitment-v1",
+          "detector_version": "local-commitment-v1",
+          "duration_ms": 1,
+          "usage": {
+            "input_tokens": 35,
+            "output_tokens": 15,
+            "total_tokens": 50,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        },
+        "complaint": {
+          "model": "local-baseline-complaint-v1",
+          "detector_version": "local-complaint-v1",
+          "duration_ms": 1,
+          "usage": {
+            "input_tokens": 35,
+            "output_tokens": 48,
+            "total_tokens": 84,
+            "cost_usd": null,
+            "currency": "USD",
+            "pricing_version": null
+          }
+        }
+      },
+      "counts": {
+        "unanswered": {
+          "duplicates": 0,
+          "fp": 1
+        },
+        "commitment": {
+          "duplicates": 0,
+          "fp": 1
+        },
+        "complaint": {
+          "duplicates": 0,
+          "tp": 1,
+          "evidence_correct": 1
+        }
+      }
+    }
+  ],
+  "protocol_thresholds": {
+    "precision": 0.8,
+    "recall": 0.9,
+    "valid_complete_evidence": 1.0,
+    "sla_errors": 0,
+    "duplicates": 0,
+    "critical_misses": 0,
+    "cost_usd": "must be known or separately approved"
+  },
+  "assessment": "diagnostic synthetic evaluation; agent-authored labels; not real-world pilot evidence"
+}

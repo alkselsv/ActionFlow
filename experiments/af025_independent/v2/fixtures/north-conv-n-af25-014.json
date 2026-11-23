@@ -1,0 +1,69 @@
+{
+  "name": "Synthetic AF-025 014",
+  "type": "personal_chat",
+  "id": 25014,
+  "messages": [
+    {
+      "id": 1,
+      "type": "message",
+      "date": "2026-09-20T14:30:00",
+      "date_unixtime": "1789903800",
+      "from": "Synthetic Customer",
+      "from_id": "customer-1",
+      "text": "Когда будет готова сводка по этапу?",
+      "_actionflow_synthetic_source": {
+        "external_id": "n-af25-014-001",
+        "revision": 1,
+        "sender_role": "customer",
+        "sent_at": "2026-09-20T14:30:00+03:00",
+        "observed_at": "2026-09-20T14:31:00+03:00",
+        "reply_to_external_id": null,
+        "source": "agent_generated_synthetic"
+      }
+    },
+    {
+      "id": 2,
+      "type": "message",
+      "date": "2026-09-20T14:35:00",
+      "date_unixtime": "1789904100",
+      "from": "Synthetic Employee",
+      "from_id": "employee-1",
+      "text": "Исправленную смету пришлю завтра до 12:00.",
+      "_actionflow_synthetic_source": {
+        "external_id": "n-af25-014-002",
+        "revision": 1,
+        "sender_role": "employee",
+        "sent_at": "2026-09-20T14:35:00+03:00",
+        "observed_at": "2026-09-20T14:36:00+03:00",
+        "reply_to_external_id": "n-af25-014-001",
+        "source": "agent_generated_synthetic"
+      }
+    },
+    {
+      "id": 3,
+      "type": "message",
+      "date": "2026-09-20T14:40:00",
+      "date_unixtime": "1789904400",
+      "from": "Synthetic Customer",
+      "from_id": "customer-1",
+      "text": "Принято, ожидаю.",
+      "_actionflow_synthetic_source": {
+        "external_id": "n-af25-014-003",
+        "revision": 1,
+        "sender_role": "customer",
+        "sent_at": "2026-09-20T14:40:00+03:00",
+        "observed_at": "2026-09-20T14:41:00+03:00",
+        "reply_to_external_id": "n-af25-014-002",
+        "source": "agent_generated_synthetic"
+      }
+    }
+  ],
+  "_actionflow_fixture": {
+    "synthetic": true,
+    "workspace_id": "af25-independent",
+    "conversation_id": "n-af25-014",
+    "source_record_count": 3,
+    "source_export_format": "agent-generated synthetic",
+    "not_a_real_telegram_export": true
+  }
+}
