@@ -20,6 +20,7 @@ from actionflow.persistence.findings import (
     CandidateEvidence,
     Commitment,
     CommitmentEvent,
+    DeadlineObservation,
     Finding,
     FindingObservation,
     FindingProposal,
@@ -176,12 +177,8 @@ def _summary(finding, run=None, observation=None):
     priority_reason = (
         observation.priority_reason if observation else None
     ) or finding.priority_reason
-    due_at = (
-        observation.sla_due_at if has_snapshot else finding.sla_due_at
-    )
-    sla_state = (
-        observation.sla_state if has_snapshot else finding.sla_state
-    )
+    due_at = observation.sla_due_at if has_snapshot else finding.sla_due_at
+    sla_state = observation.sla_state if has_snapshot else finding.sla_state
     sla_reason = (observation.sla_reason if observation else None) or finding.sla_reason
     first_response_at = (
         observation.first_response_at if has_snapshot else finding.first_response_at
@@ -197,8 +194,17 @@ def _summary(finding, run=None, observation=None):
         else finding.commitment_status
     )
     settings_version_id = (
-        (observation.settings_version_id if observation else None)
-        or (run.settings_version_id if run is not None else None)
+        observation.settings_version_id
+        if observation
+        else (
+            (sla_reason or {}).get(
+                "settings_version_id",
+                (priority_reason or {}).get(
+                    "settings_version_id",
+                    run.settings_version_id if run else None,
+                ),
+            )
+        )
     )
     return {
         "id": finding.id,
@@ -337,7 +343,9 @@ def _finding(db, finding_id, run_id=None):
     )
     run = db.get(AnalysisRun, selected_run_id) if selected_run_id else None
     candidate_id = (
-        observation.candidate_id if observation is not None else finding.latest_candidate_id
+        observation.candidate_id
+        if observation is not None
+        else finding.latest_candidate_id
     )
     candidate = db.get(Candidate, candidate_id) if candidate_id else None
     candidate_data = _candidate_view(db, candidate)
@@ -350,9 +358,7 @@ def _finding(db, finding_id, run_id=None):
             CommitmentEvent.commitment_id == commitment.id
         )
         if selected_run_id and run is not None:
-            events_query = events_query.where(
-                CommitmentEvent.at <= as_utc(run.as_of)
-            )
+            events_query = events_query.where(CommitmentEvent.at <= as_utc(run.as_of))
         events = db.scalars(
             events_query.order_by(CommitmentEvent.at, CommitmentEvent.id)
         )
@@ -362,14 +368,12 @@ def _finding(db, finding_id, run_id=None):
             "assignee_name": commitment.assignee_name,
             "status": (
                 observation.commitment_status
-                if observation is not None
-                and observation.commitment_status is not None
+                if observation is not None and observation.commitment_status is not None
                 else commitment.status
             ),
             "due_at": as_utc(
                 observation.commitment_due_at
-                if observation is not None
-                and observation.commitment_status is not None
+                if observation is not None and observation.commitment_status is not None
                 else commitment.due_at
             ),
             "events": [
@@ -399,7 +403,7 @@ def _finding(db, finding_id, run_id=None):
         )
         first_reaction_at = as_utc(supporting)
     return {
-        **_summary(finding, run, observation),
+        **_summary(finding, run, observation if run_id else None),
         "description": candidate.description if candidate else finding.description,
         "recommendation": candidate.suggested_action
         if candidate
@@ -407,7 +411,7 @@ def _finding(db, finding_id, run_id=None):
         "confidence": candidate.confidence if candidate else finding.confidence,
         "priority_reason": (
             observation.priority_reason
-            if observation is not None and observation.priority_reason
+            if run_id and observation is not None and observation.priority_reason
             else finding.priority_reason
         ),
         "subject": {
@@ -416,7 +420,18 @@ def _finding(db, finding_id, run_id=None):
             "anchor_message_id": finding.anchor_message_id,
             "anchor_revision_id": finding.anchor_revision_id,
         },
-        "limitations": (candidate.limitations if candidate else []),
+        "limitations": list(
+            dict.fromkeys(
+                [
+                    *(candidate.limitations if candidate else []),
+                    *(
+                        (finding.sla_reason or {}).get("limitations", [])
+                        if not run_id
+                        else []
+                    ),
+                ]
+            )
+        ),
         "candidate": candidate_data,
         "commitment": commitment_data,
         "evidence": candidate_data["evidence"] if candidate_data else [],
@@ -424,6 +439,25 @@ def _finding(db, finding_id, run_id=None):
         if selected_run_id
         else [],
         "history": _history(db, finding.id),
+        "deadline_checks": [
+            {
+                "id": check.id,
+                "due_at": as_utc(check.due_at),
+                "evaluated_at": as_utc(check.evaluated_at),
+                "state": check.state,
+                "settings_version_id": check.settings_version_id,
+            }
+            for check in db.scalars(
+                select(DeadlineObservation)
+                .where(
+                    DeadlineObservation.finding_id == finding.id,
+                )
+                .order_by(DeadlineObservation.evaluated_at.desc())
+                .limit(50)
+            )
+        ]
+        if not run_id
+        else [],
         "proposals": _proposals(db, finding.id),
         "actions": _manager_actions(db, finding.id),
         "detector": {
@@ -434,7 +468,9 @@ def _finding(db, finding_id, run_id=None):
             "schema_version": run.schema_version,
             "duration_ms": run.detector_duration_ms,
             "usage": run.usage,
-            "cost_usd": float(run.cost_usd) if run and run.cost_usd is not None else None,
+            "cost_usd": float(run.cost_usd)
+            if run and run.cost_usd is not None
+            else None,
         }
         if run
         else None,
@@ -498,10 +534,7 @@ def _project_findings(
             raise HTTPException(400, "Некорректный курсор очереди")
         query = query.where(
             (Finding.updated_at < anchor.updated_at)
-            | (
-                (Finding.updated_at == anchor.updated_at)
-                & (Finding.id < anchor.id)
-            )
+            | ((Finding.updated_at == anchor.updated_at) & (Finding.id < anchor.id))
         )
     if run_id:
         rows = db.execute(query.limit(limit + 1)).all()
@@ -512,8 +545,7 @@ def _project_findings(
         "items": [
             _summary(
                 finding,
-                selected_run
-                or db.get(AnalysisRun, finding.current_run_id),
+                selected_run or db.get(AnalysisRun, finding.current_run_id),
                 observation,
             )
             for finding, observation in items
@@ -548,9 +580,7 @@ def register_finding_routes(projects, router, Db, session_required, origin_requi
         )
 
     @projects.get("/projects/{project_id}/findings/counts")
-    def project_finding_counts(
-        project_id: str, run_id: str | None = None, db=Db
-    ):
+    def project_finding_counts(project_id: str, run_id: str | None = None, db=Db):
         require_project(db, project_id)
         if run_id:
             _run(db, run_id)
@@ -566,9 +596,12 @@ def register_finding_routes(projects, router, Db, session_required, origin_requi
                 )
             ).all()
         else:
-            rows = [(item, None) for item in db.scalars(
-                select(Finding).where(Finding.project_id == project_id)
-            )]
+            rows = [
+                (item, None)
+                for item in db.scalars(
+                    select(Finding).where(Finding.project_id == project_id)
+                )
+            ]
         by_status = {}
         by_priority = {}
         by_type = {}
@@ -576,7 +609,9 @@ def register_finding_routes(projects, router, Db, session_required, origin_requi
         open_count = 0
         sla_breaches = 0
         for finding, observation in rows:
-            priority = (observation.priority if observation else None) or finding.priority
+            priority = (
+                observation.priority if observation else None
+            ) or finding.priority
             sla_state = (
                 observation.sla_state if observation else None
             ) or finding.sla_state
@@ -624,23 +659,16 @@ def register_finding_routes(projects, router, Db, session_required, origin_requi
         request_hash = sha256(request_body.encode()).hexdigest()
 
         finding = db.scalar(
-            select(Finding)
-            .where(Finding.id == finding_id)
-            .with_for_update()
+            select(Finding).where(Finding.id == finding_id).with_for_update()
         )
         if finding is None:
             raise HTTPException(404, "Карточка не найдена")
 
         replay = db.scalar(
-            select(ManagerAction).where(
-                ManagerAction.idempotency_key == key
-            )
+            select(ManagerAction).where(ManagerAction.idempotency_key == key)
         )
         if replay is not None:
-            if (
-                replay.finding_id != finding.id
-                or replay.request_hash != request_hash
-            ):
+            if replay.finding_id != finding.id or replay.request_hash != request_hash:
                 raise HTTPException(
                     409,
                     {
@@ -669,9 +697,7 @@ def register_finding_routes(projects, router, Db, session_required, origin_requi
 
         if data.action == "confirm":
             if from_status in ("rejected", "closed"):
-                proposal_kind = (
-                    "review" if from_status == "rejected" else "reopen"
-                )
+                proposal_kind = "review" if from_status == "rejected" else "reopen"
                 if data.proposal_id:
                     proposal = db.get(FindingProposal, data.proposal_id)
                 else:
@@ -774,9 +800,7 @@ def register_finding_routes(projects, router, Db, session_required, origin_requi
                 raise HTTPException(422, "Предложение не найдено или уже обработано")
 
         if proposal is not None and data.action in ("confirm", "dismiss_proposal"):
-            proposal.status = (
-                "accepted" if data.action == "confirm" else "dismissed"
-            )
+            proposal.status = "accepted" if data.action == "confirm" else "dismissed"
             proposal.resolved_at = utc_now()
         if data.action == "dismiss_proposal":
             to_status = from_status
@@ -807,9 +831,7 @@ def register_finding_routes(projects, router, Db, session_required, origin_requi
         except IntegrityError:
             db.rollback()
             existing = db.scalar(
-                select(ManagerAction).where(
-                    ManagerAction.idempotency_key == key
-                )
+                select(ManagerAction).where(ManagerAction.idempotency_key == key)
             )
             if (
                 existing is not None
@@ -841,8 +863,7 @@ def register_finding_routes(projects, router, Db, session_required, origin_requi
         ).all()
         return {
             "items": [
-                _summary(finding, run, observation)
-                for finding, observation in rows
+                _summary(finding, run, observation) for finding, observation in rows
             ]
         }
 
