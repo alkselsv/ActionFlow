@@ -1,11 +1,58 @@
 import unittest
 import socket
 import urllib.error
+import json
+import tempfile
+from pathlib import Path
 
-from probe import compare_export, normalize_updates, report_rows, safe_network_error, valid_bot_token
+from probe import (
+    compare_export,
+    numeric_id,
+    normalize_export_chat_id,
+    normalize_export,
+    normalize_updates,
+    report_rows,
+    safe_network_error,
+    valid_bot_token,
+)
 
 
 class NormalizeUpdatesTests(unittest.TestCase):
+    def test_normalizes_export_chat_ids_to_bot_api_dialog_ids(self):
+        self.assertEqual(normalize_export_chat_id(456, "private_group"), -456)
+        self.assertEqual(normalize_export_chat_id("789", "private_supergroup"), -1000000000789)
+        self.assertEqual(normalize_export_chat_id(-456, "private_group"), -456)
+        self.assertEqual(normalize_export_chat_id(-1000000000789, "private_supergroup"), -1000000000789)
+        self.assertIsNone(normalize_export_chat_id(-456, "private_supergroup"))
+        self.assertIsNone(normalize_export_chat_id(-1000000000789, "private_group"))
+        self.assertIsNone(normalize_export_chat_id(-456, None))
+        self.assertEqual(normalize_export_chat_id(999999999999, "private_group"), -999999999999)
+        self.assertEqual(normalize_export_chat_id(997852516352, "private_supergroup"), -1997852516352)
+        self.assertIsNone(normalize_export_chat_id(1000000000000, "private_group"))
+        self.assertIsNone(numeric_id(456.9))
+        self.assertIsNone(numeric_id(True))
+        self.assertEqual(numeric_id("-456"), -456)
+
+    def test_export_ids_are_normalized_before_comparison(self):
+        updates = normalize_updates([{"update_id": 1, "message": {
+            "message_id": 1, "date": 1790000000,
+            "chat": {"id": -456, "type": "group"},
+            "from": {"id": 42}, "text": "synthetic event",
+        }}])
+        export_data = {"id": "456", "type": "private_group", "messages": [{
+            "id": "1", "type": "message", "from_id": "user42",
+            "date_unixtime": "1790000000", "text": "synthetic event",
+        }]}
+        with tempfile.TemporaryDirectory() as directory:
+            export_path = Path(directory) / "result.json"
+            export_path.write_text(json.dumps(export_data), encoding="utf-8")
+            exported = normalize_export(export_path)
+        result = compare_export(exported, updates)[0]
+        self.assertEqual(result["match_status"], "matched")
+        self.assertFalse(result["chat_id_exact_match"])
+        self.assertTrue(result["chat_id_converted_match"])
+        self.assertTrue(result["message_id_equal"])
+
     def test_rejects_control_characters_in_a_bot_token(self):
         self.assertTrue(valid_bot_token("123456789:Abc_def-987"))
         self.assertFalse(valid_bot_token("\x16"))
@@ -69,11 +116,15 @@ class NormalizeUpdatesTests(unittest.TestCase):
             "from": {"id": 42}, "text": "synthetic",
         }}])
         export = [{"chat_key": updates[0]["chat_key"], "message_id": 10, "reply_to_message_id": None,
+                   "chat_id_value": updates[0]["chat_id_value"],
+                   "raw_chat_id_value": updates[0]["chat_id_value"],
                    "actor_key": updates[0]["actor_key"], "date": 1790000000,
                    "text_sha256": updates[0]["text_sha256"]}]
         self.assertEqual(compare_export(export, updates)[0]["match_status"], "matched")
         export[0]["date"] += 1
-        self.assertEqual(compare_export(export, updates)[0]["match_status"], "ambiguous")
+        result = compare_export(export, updates)[0]
+        self.assertEqual(result["match_status"], "ambiguous")
+        self.assertTrue(result["chat_id_exact_match"])
         export[0]["date"] -= 1
         export[0]["chat_key"] = "different-per-run-chat-key"
         result = compare_export(export, updates)[0]

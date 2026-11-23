@@ -86,6 +86,49 @@ def unix_seconds(value: Any) -> int | None:
             return None
 
 
+def numeric_id(value: Any) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and re.fullmatch(r"-?\d+", value.strip()):
+        return int(value.strip())
+    return None
+
+
+def normalize_export_chat_id(chat_id: Any, chat_type: Any) -> int | None:
+    """Convert a positive Telegram Desktop peer ID to Bot API dialog-ID form."""
+    peer_id = numeric_id(chat_id)
+    if peer_id is None:
+        return None
+    kind = str(chat_type or "").lower()
+    if peer_id < 0:
+        if "supergroup" in kind or "channel" in kind:
+            if -1_997_852_516_352 <= peer_id <= -1_000_000_000_001:
+                return peer_id
+            return None
+        if "group" in kind and -999_999_999_999 <= peer_id <= -1:
+            return peer_id
+        return None
+    if peer_id == 0:
+        return None
+    if peer_id > 997_852_516_352 and "supergroup" in str(chat_type or "").lower():
+        return None
+    if peer_id > 999_999_999_999 and "group" in str(chat_type or "").lower():
+        return None
+    if "supergroup" in kind or "channel" in kind:
+        if not 1 <= peer_id <= 997_852_516_352:
+            return None
+        return -(1_000_000_000_000 + peer_id)
+    if "group" in kind:
+        if not 1 <= peer_id <= 999_999_999_999:
+            return None
+        return -peer_id
+    if kind in {"personal_chat", "private_chat", "user"}:
+        return peer_id
+    return None
+
+
 def normalize_updates(updates: list[dict[str, Any]]) -> list[dict[str, Any]]:
     rows = []
     for update in updates:
@@ -103,6 +146,7 @@ def normalize_updates(updates: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "update_id": update.get("update_id"),
             "event_type": event_type,
             "chat_key": key(chat.get("id")),
+            "chat_id_value": numeric_id(chat.get("id")),
             "chat_type": chat.get("type"),
             "message_id": item.get("message_id") if is_message else None,
             "reply_to_message_id": (item.get("reply_to_message") or {}).get("message_id") if is_message else None,
@@ -119,16 +163,20 @@ def normalize_updates(updates: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 def normalize_export(path: Path) -> list[dict[str, Any]]:
     data = json.loads(path.read_text(encoding="utf-8"))
+    raw_chat_id = numeric_id(data.get("id"))
+    chat_id = normalize_export_chat_id(raw_chat_id, data.get("type"))
     rows = []
     for item in data.get("messages", []):
         if item.get("type") != "message":
             continue
-        reply_id = item.get("reply_to_message_id")
+        reply_id = numeric_id(item.get("reply_to_message_id"))
         if reply_id is None:
-            reply_id = (item.get("reply_to") or {}).get("message_id")
+            reply_id = numeric_id((item.get("reply_to") or {}).get("message_id"))
         rows.append({
-            "chat_key": key(data.get("id")),
-            "message_id": item.get("id"),
+            "chat_key": key(chat_id),
+            "chat_id_value": chat_id,
+            "raw_chat_id_value": raw_chat_id,
+            "message_id": numeric_id(item.get("id")),
             "reply_to_message_id": reply_id,
             "actor_key": key((re.search(r"(\d+)$", str(item.get("from_id", ""))) or [None, None])[1]),
             "date": unix_seconds(item.get("date_unixtime") or item.get("date")),
@@ -154,10 +202,12 @@ def compare_export(export_rows: list[dict[str, Any]], update_rows: list[dict[str
         comparisons.append({
             "message_key": key(f'{item.get("chat_key")}:{item["message_id"]}'),
             "reply_message_key": key(f'{item.get("chat_key")}:{item["reply_to_message_id"]}') if item.get("reply_to_message_id") is not None else None,
-            "chat_id_exact_match": bool(candidates),
+            "chat_id_exact_match": any(item.get("raw_chat_id_value") == row.get("chat_id_value") for row in candidates),
+            "chat_id_converted_match": bool(candidates),
             "same_message_id_count": len(same_message_id),
             "same_chat_message_id_count": len(candidates),
             "match_status": "matched" if match else "ambiguous" if candidates else "chat_id_mismatch" if same_message_id else "not_observed",
+            "message_id_equal": bool(match) and item.get("message_id") == match.get("message_id"),
             "reply_key_equal": bool(match) and item.get("reply_to_message_id") == match.get("reply_to_message_id"),
             "author_key_equal": bool(match) and item.get("actor_key") == match.get("actor_key"),
             "timestamp_equal": bool(match) and item.get("date") == match.get("date"),
@@ -172,7 +222,7 @@ def report_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     reports = []
     for row in rows:
         redacted = {name: value for name, value in row.items()
-                    if name not in {"text_sha256", "update_id", "message_id", "reply_to_message_id"}}
+                    if name not in {"text_sha256", "update_id", "message_id", "reply_to_message_id", "chat_id_value", "raw_chat_id_value"}}
         if row.get("update_id") is not None:
             redacted["update_key"] = key(row["update_id"])
         if row.get("message_id") is not None:
