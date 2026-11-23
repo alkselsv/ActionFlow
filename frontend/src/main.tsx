@@ -91,6 +91,7 @@ function Projects({ onExpired }: { onExpired: () => void }) {
     const result = await request<{items: ConversationMessage[]; next_cursor: string | null }>(`/projects/${project.id}/messages${page}`);
     setMessages((items) => cursor ? [...items, ...result.items] : result.items);
     setMessageCursor(result.next_cursor);
+    setParticipantRevision((revision) => revision + 1);
   }
 
   async function importFile(event: FormEvent<HTMLFormElement>) {
