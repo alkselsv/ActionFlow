@@ -31,7 +31,7 @@ type Run = {
   implemented_types: string[];
   cost_usd: number | null;
   duration_seconds: number | null;
-  detectors: Record<string, {status: DetectorStatus; model?: string; duration_ms?: number; candidate_count?: number;
+  detectors: Record<string, {status: DetectorStatus; provider?: string; model?: string; duration_ms?: number; candidate_count?: number;
     detector_version?: string; prompt_version?: string; schema_version?: string; usage?: {cost_usd: string | null}}>;
   usage: Record<string, unknown> | null;
   detector: {
@@ -248,7 +248,7 @@ export function AnalysisPreparation({ projectId, onExpired, onCompleted }: {
   ) : [];
   return <section className="panel settings">
     <h2>Запуск анализа</h2>
-    <p>Кнопка запускает локальные детекторы обращений без ответа, обязательств Vedita и претензий клиента на зафиксированном входе. Внешние LLM и платные вызовы не выполняются.</p>
+    <p>Запуск анализирует обращения без ответа, обязательства Vedita и претензии клиента на зафиксированном входе. Использованная модель и провайдер показываются отдельно для каждого типа результата; без явной настройки внешнего провайдера работают локальные детекторы.</p>
     <form onSubmit={submit}>
       <label>Начало периода<input name="period_start" type="datetime-local" required /></label>
       <label>Конец периода, не включительно<input name="period_end" type="datetime-local" required /></label>
@@ -288,7 +288,7 @@ export function AnalysisPreparation({ projectId, onExpired, onCompleted }: {
           <p role="status">Частичный результат. Сохранены результаты завершившихся детекторов.</p>}
         <ul>{Object.entries(run.detectors).map(([type, detector]) => <li key={type}>
           {findingTypeLabels[type] ?? type}: {detectorStatusLabels[detector.status]}
-          {detector.status === "succeeded" && ` · ${detector.candidate_count ?? 0} кандидатов · ${detector.duration_ms ?? "—"} мс · ${detector.model ?? "модель не указана"} · USD ${detector.usage?.cost_usd ?? "неизвестно"}`}
+          {detector.status === "succeeded" && ` · ${detector.candidate_count ?? 0} кандидатов · ${detector.duration_ms ?? "—"} мс · ${detector.provider ?? "провайдер не указан"} / ${detector.model ?? "модель не указана"} · USD ${detector.usage?.cost_usd ?? "неизвестно"}`}
           {detector.detector_version && <small> · детектор {detector.detector_version} · prompt {detector.prompt_version ?? "—"} · схема {detector.schema_version ?? "—"}</small>}
         </li>)}</ul>
         <p>Время запуска: {run.duration_seconds ?? "—"} с · стоимость: {run.cost_usd ?? "неизвестна"} USD.</p>

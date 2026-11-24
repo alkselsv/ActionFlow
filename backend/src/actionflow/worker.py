@@ -8,6 +8,7 @@ from temporalio.client import Client
 from temporalio.worker import Worker
 
 from actionflow.config import Settings
+from actionflow.detectors.openai_compatible import configured_detectors
 from actionflow.operations import record_worker_heartbeat
 from actionflow.persistence.database import database
 from actionflow.temporal.activities import AnalysisActivities
@@ -30,8 +31,18 @@ async def heartbeat_loop(sessions, queue: str) -> None:
         await asyncio.sleep(10)
 
 
-def analysis_worker(client, sessions, queue, executor, detector=None):
-    activities = AnalysisActivities(sessions, detector)
+def analysis_worker(
+    client,
+    sessions,
+    queue,
+    executor,
+    detector=None,
+    commitment_detector=None,
+    complaint_detector=None,
+):
+    activities = AnalysisActivities(
+        sessions, detector, commitment_detector, complaint_detector
+    )
     deadlines = DeadlineActivities(sessions)
     return Worker(
         client,
@@ -55,6 +66,7 @@ def analysis_worker(client, sessions, queue, executor, detector=None):
 
 async def main():
     settings = Settings.from_env()
+    detectors = configured_detectors(settings)
     client = await Client.connect(
         settings.temporal_address, namespace=settings.temporal_namespace
     )
@@ -65,7 +77,11 @@ async def main():
     try:
         with ThreadPoolExecutor(max_workers=4) as executor:
             await analysis_worker(
-                client, sessions, settings.temporal_task_queue, executor
+                client,
+                sessions,
+                settings.temporal_task_queue,
+                executor,
+                *detectors,
             ).run()
     finally:
         heartbeat.cancel()

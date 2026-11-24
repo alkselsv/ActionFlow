@@ -1,9 +1,8 @@
 """Local deterministic baseline for the first unanswered detector.
 
-This adapter is deliberately not a remote LLM. AF-004 currently forbids external
-providers, while issue #13 needs a working, reproducible detector. The adapter
-implements the same structured contract as a future model and reports
-``cost_usd = null`` because no paid call happens.
+This adapter is the deterministic fallback when no external provider is
+explicitly configured. It implements the same structured contract as remote
+models and reports ``cost_usd = null`` because no paid call happens.
 """
 
 import re
